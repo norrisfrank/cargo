@@ -1,0 +1,2662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titan Cargo - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet.js CSS & JS for free interactive maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        :root {
+            /* Color Palette - Matching login page */
+            --primary: #1a5276; /* Deep blue */
+            --primary-light: #2980b9; /* Lighter blue */
+            --secondary: #2c3e50; /* Dark slate */
+            --accent: #f39c12; /* Gold accent */
+            --light: #ecf0f1; /* Light gray/white */
+            --dark: #2c3e50; /* Dark slate */
+            --error: #e74c3c; /* Error red */
+            --success: #27ae60; /* Success green */
+            --warning: #f1c40f; /* Warning yellow */
+            --info: #3498db; /* Info blue */
+            --gray-light: #f8f9fa;
+            --gray: #e9ecef;
+            
+            /* Dark Mode Variables (default to light mode values) */
+            --background-color: var(--light);
+            --text-color: var(--dark);
+            --card-background: white;
+            --header-background: white;
+            --sidebar-background: var(--primary);
+            --sidebar-text: white;
+            --sidebar-active-background: var(--primary-light);
+            --table-header-background: var(--gray-light);
+            --table-border-color: #eee;
+            --chat-admin-background: #eaf6fb;
+            --chat-other-background: #fdf6e3;
+        }
+        
+        body.dark-mode {
+            --background-color: #1a202c; /* Darker background */
+            --text-color: #e2e8f0; /* Light gray text */
+            --card-background: #2d3748; /* Dark card background */
+            --header-background: #2d3748; /* Dark header background */
+            --sidebar-background: #2b3e50; /* Slightly adjusted dark sidebar */
+            --sidebar-text: #cbd5e0; /* Lighter sidebar text */
+            --sidebar-active-background: #3c4a5c; /* Darker active sidebar */
+            --table-header-background: #4a5568; /* Darker table header */
+            --table-border-color: #4a5568; /* Darker table border */
+            --chat-admin-background: #4a5568; /* Dark admin chat background */
+            --chat-other-background: #636b6f; /* Dark other chat background */
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background-color: var(--sidebar-background);
+            color: var(--sidebar-text);
+            height: 100vh;
+            overflow-y: auto;
+            transition: width 0.3s ease; /* Smooth transition for width only */
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, var(--border-opacity, 0.1)); /* Use variable for opacity */
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background-color: var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .user-info {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, var(--border-opacity, 0.1)); /* Use variable for opacity */
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .user-name {
+            font-weight: 500;
+        }
+        
+        .user-role {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .nav-menu {
+            padding: 15px 0; /* Increased vertical padding */
+        }
+        
+        .nav-item {
+            padding: 12px 20px; /* Keep consistent horizontal padding */
+            display: flex;
+            align-items: center;
+            color: var(--sidebar-text);
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .nav-item:hover {
+            background-color: var(--sidebar-active-background);
+            color: var(--text-color);
+        }
+        
+        .nav-item.active {
+            background-color: var(--sidebar-active-background);
+            color: var(--text-color);
+            border-left: 4px solid var(--accent); /* Accent color bar on active */
+        }
+        
+        .nav-icon {
+            margin-right: 12px; /* Space between icon and text */
+            width: 24px; /* Fixed width for consistent alignment */
+            text-align: center; /* Center icon within its space */
+        }
+        
+        .nav-section {
+            padding: 10px 20px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--sidebar-text); /* Keep consistent color */
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+        
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header/Navbar */
+        .main-header {
+            background-color: var(--header-background);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .menu-toggle {
+            display: none;
+            cursor: pointer;
+            font-size: 20px;
+        }
+        
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background-color: var(--background-color);
+            border-radius: 4px;
+            padding: 8px 15px;
+            width: 300px;
+        }
+        
+        .search-bar input {
+            border: none;
+            background: transparent;
+            padding: 0 10px;
+            width: 100%; /* Adjusted width */
+            outline: none;
+            color: var(--text-color); /* Ensure text color is readable */
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+        }
+        
+        .notification-icon, .message-icon, .profile-dropdown {
+            margin-left: 20px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .notification-icon, .message-icon {
+            background-color: var(--card-background);
+        }
+        
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: var(--error);
+            color: white;
+            font-size: 10px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .profile-dropdown {
+            background-color: var(--primary-light);
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Main Dashboard Content */
+        .dashboard-content {
+            flex: 1;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--background-color);
+            padding: 30px;
+            padding-top: 0; /* Remove top padding to place content right below header */
+            flex: 1;
+        }
+        
+        .page-title {
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        /* Overview Cards */
+        .overview-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+        }
+        
+        .stat-card {
+            display: flex;
+            align-items: center;
+        }
+        
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 24px;
+        }
+        
+        .stat-icon.revenue {
+            background-color: rgba(39, 174, 96, 0.1);
+            color: var(--success);
+        }
+        
+        .stat-icon.users {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--info);
+        }
+        
+        .stat-icon.projects {
+            background-color: rgba(155, 89, 182, 0.1);
+            color: #9b59b6;
+        }
+        
+        .stat-icon.tasks {
+            background-color: rgba(243, 156, 18, 0.1);
+            color: var(--accent);
+        }
+        
+        .stat-details h3 {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .stat-details .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--secondary);
+        }
+        
+        .stat-details .trend {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+        
+        .trend.up {
+            color: var(--success);
+        }
+        
+        .trend.down {
+            color: var(--error);
+        }
+        
+        /* Chart and Table Section */
+        .dashboard-charts {
+            display: grid;
+            grid-template-columns: 2fr 1.3fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            height: 370px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            min-width: 0;
+        }
+        
+        #revenueChart, #productivityChart, #projectStatusChart {
+            max-height: 140px;
+            min-height: 120px;
+            width: 100% !important;
+            margin-bottom: 10px;
+        }
+        
+        #productivityChart {
+            margin-top: 10px;
+        }
+        
+        .chart-card > div {
+            flex-shrink: 0;
+        }
+        
+        .chart-card table {
+            margin-top: 10px;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .chart-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chart-actions select {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            outline: none;
+        }
+        
+        .chart-placeholder {
+            height: 230px;
+            background-color: var(--gray);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #7f8c8d;
+        }
+        
+        /* Recent Activity Table */
+        .activity-card {
+            height: 400px;
+            overflow: hidden;
+        }
+        
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .activity-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .see-all {
+            color: var(--primary);
+            font-size: 14px;
+            text-decoration: none;
+        }
+        
+        .activity-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .activity-table th, .activity-table td {
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--table-border-color);
+        }
+        
+        .activity-table th {
+            font-weight: 500;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .activity-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status.completed {
+            background-color: rgba(39, 174, 96, 0.1);
+            color: var(--success);
+        }
+        
+        .status.in-progress {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--info);
+        }
+        
+        .status.pending {
+            background-color: rgba(243, 156, 18, 0.1);
+            color: var(--accent);
+        }
+        
+        /* Bottom Section */
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px; /* Adjusted gap */
+        }
+        
+        .action-btn {
+            background-color: var(--card-background);
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .action-btn:hover {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+        
+        .action-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            font-size: 20px;
+            background-color: var(--gray-light);
+            color: var(--primary);
+        }
+        
+        .action-label {
+            font-size: 14px;
+            color: var(--secondary);
+        }
+        
+        /* Notifications */
+        .notification-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        
+        .notification-item {
+            display: flex;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--table-border-color);
+        }
+        
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        
+        .notification-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+        
+        .notification-details {
+            flex: 1;
+        }
+        
+        .notification-message {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .notification-time {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .dashboard-charts {
+                grid-template-columns: 1fr;
+            }
+            .chart-card {
+                height: auto;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+            }
+            
+            .sidebar.expanded {
+                width: 250px;
+            }
+            
+            .logo span, .user-name, .user-role, .nav-item span, .nav-section {
+                display: none;
+            }
+            
+            .nav-item {
+                padding: 12px 0; /* Reduce horizontal padding in collapsed state */
+                justify-content: center; /* Center content horizontally */
+            }
+            
+            .sidebar.expanded .logo span,
+            .sidebar.expanded .user-name,
+            .sidebar.expanded .user-role,
+            .sidebar.expanded .nav-item span,
+            .sidebar.expanded .nav-section {
+                display: block;
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+            
+            .search-bar {
+                width: 200px;
+            }
+            
+            .dashboard-charts, .overview-cards, .bottom-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+        }
+        
+        /* Added styles for centering and team photos/client plane types */
+        .centered-content {
+            /* margin: 0 auto; /* Center block element - removed for left alignment */
+            padding: 0 20px; /* Add some horizontal padding */
+            width: 100%; /* Ensure it takes full width up to max-width */
+        }
+        
+        /* Style for the team member photos */
+        .team-member-photo {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover; /* Ensure image covers the area without distortion */
+            margin-right: 15px;
+        }
+        
+        body.dark-mode .profile-detail-label {
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">T</div>
+                <span>Titan Cargo</span>
+            </div>
+        </div>
+        
+        <div class="user-info">
+            <div class="user-avatar">T</div>
+            <div class="user-details">
+                <div class="user-name">Titan Cargo Admin</div>
+                <div class="user-role">Administrator</div>
+            </div>
+        </div>
+        
+        <div class="nav-menu">
+            <a class="nav-item active">
+                <div class="nav-icon">📊</div>
+                <span>Dashboard</span>
+            </a>
+            <a class="nav-item">
+                <div class="nav-icon">📁</div>
+                <span>Projects</span>
+            </a>
+            <a class="nav-item">
+                <div class="nav-icon">📝</div>
+                <span>Tasks</span>
+            </a>
+            <a class="nav-item">
+                <div class="nav-icon">📈</div>
+                <span>Reports</span>
+            </a>
+            
+            <div class="nav-section">Management</div>
+            
+            <a class="nav-item" id="team-nav">
+                <div class="nav-icon">👥</div>
+                <span>Team</span>
+            </a>
+            <a class="nav-item" id="clients-nav">
+                <div class="nav-icon">💼</div>
+                <span>Clients</span>
+            </a>
+            <a class="nav-item" id="calendar-nav">
+                <div class="nav-icon">📅</div>
+                <span>Calendar</span>
+            </a>
+            
+            <div class="nav-section">Settings</div>
+            
+            <a class="nav-item" id="profile-nav">
+                <div class="nav-icon">👤</div>
+                <span>Profile</span>
+            </a>
+            <a class="nav-item" href="./login.html">
+                <div class="nav-icon">🚪</div>
+                <span>Logout</span>
+            </a>
+            <a class="nav-item" href="./login.html">
+                <div class="nav-icon">❓</div>
+                <span>Help & Support</span>
+            </a>
+            <a class="nav-item" href="./login.html">
+                <div class="nav-icon">🚪</div>
+                <span>Logout</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <!-- Header/Navbar -->
+        <div class="main-header">
+            <div class="menu-toggle" id="menu-toggle">☰</div>
+            <div class="search-bar">
+                <span>🔍</span>
+                <input type="text" placeholder="Search...">
+            </div>
+            <div class="header-actions">
+                <div class="notification-icon" id="notification-icon">
+                    🔔
+                    <span class="badge">3</span>
+                </div>
+                <div class="message-icon" id="message-icon">
+                    ✉️
+                    <span class="badge">5</span>
+                </div>
+                <div class="profile-dropdown">
+                    T
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Panel (Hidden by default) -->
+        <div id="notification-panel" style="display: none; position: absolute; top: 60px; right: 20px; width: 300px; background-color: var(--card-background); border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 100; overflow: hidden;">
+            <div style="padding: 15px; border-bottom: 1px solid var(--gray);">
+                <h4 style="margin: 0; font-size: 16px; color: var(--secondary);">Notifications</h4>
+            </div>
+            <div id="notification-panel-list" style="max-height: 300px; overflow-y: auto; padding: 10px 15px;">
+                <!-- Notifications will be loaded here by JS -->
+            </div>
+            <div style="padding: 10px 15px; text-align: center; border-top: 1px solid var(--gray);">
+                <a href="#" class="see-all" style="font-size: 13px;">See All Notifications</a>
+            </div>
+        </div>
+
+        <!-- Message Panel (Hidden by default) -->
+        <div id="message-panel" style="display: none; position: absolute; top: 60px; right: 70px; width: 300px; background-color: var(--card-background); border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 100; overflow: hidden;">
+            <div style="padding: 15px; border-bottom: 1px solid var(--gray);">
+                <h4 style="margin: 0; font-size: 16px; color: var(--secondary);">Messages</h4>
+            </div>
+            <div id="message-panel-list" style="max-height: 300px; overflow-y: auto; padding: 10px 15px;">
+                <!-- Messages will be loaded here by JS -->
+            </div>
+            <div style="padding: 10px 15px; text-align: center; border-top: 1px solid var(--gray);">
+                <a href="#" class="see-all" style="font-size: 13px;">See All Messages</a>
+            </div>
+        </div>
+        
+        <!-- Dashboard Content -->
+        <div class="dashboard-content" id="dashboard-section">
+            <h1 class="page-title">Dashboard</h1>
+            
+            <!-- Overview Stats -->
+            <div class="overview-cards">
+                <div class="card stat-card">
+                    <div class="stat-icon revenue">KES</div>
+                    <div class="stat-details">
+                        <h3>Total Revenue</h3>
+                        <div class="value">KES348,250</div>
+                        <div class="trend up">↑ 12.5% from last month</div>
+                    </div>
+                </div>
+                
+                <div class="card stat-card">
+                    <div class="stat-icon users">👥</div>
+                    <div class="stat-details">
+                        <h3>Total Users</h3>
+                        <div class="value">1,287</div>
+                        <div class="trend up">↑ 8.3% from last month</div>
+                    </div>
+                </div>
+                
+                <div class="card stat-card">
+                    <div class="stat-icon projects">📁</div>
+                    <div class="stat-details">
+                        <h3>Active Projects</h3>
+                        <div class="value">42</div>
+                        <div class="trend up">↑ 4.5% from last month</div>
+                    </div>
+                </div>
+                
+                <div class="card stat-card">
+                    <div class="stat-icon tasks">✓</div>
+                    <div class="stat-details">
+                        <h3>Completed Tasks</h3>
+                        <div class="value">768</div>
+                        <div class="trend down">↓ 2.1% from last month</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Charts Section -->
+            <div class="dashboard-charts">
+                <div class="card chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Revenue Overview</div>
+                        <div class="chart-actions">
+                            <select id="revenue-period-select">
+                                <option>Last 7 Days</option>
+                                <option selected>Last 30 Days</option>
+                                <option>Last 90 Days</option>
+                                <option>Last Year</option>
+                            </select>
+                        </div>
+                    </div>
+                    <canvas id="revenueChart" style="height: 140px;"></canvas>
+                    <div style="margin-top: 20px;">
+                        <div class="chart-title">Productivity by Team</div>
+                        <canvas id="productivityChart" style="height: 140px;"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card chart-card" style="height: 420px;">
+                    <div class="chart-header">
+                        <div class="chart-title">Project Status</div>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <canvas id="projectStatusChart" style="height: 120px;"></canvas>
+                    </div>
+                    <div>
+                        <table style="width:100%; font-size:14px; border-collapse:collapse;">
+                            <thead>
+                                <tr style="background:#f8f9fa;">
+                                    <th style="padding:6px;">Type</th>
+                                    <th style="padding:6px;">Operating</th>
+                                    <th style="padding:6px;">Grounded</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fleet-status-table">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cargo Tracking Table -->
+            <div class="card activity-card" style="min-height:420px;max-height:600px;overflow:auto;">
+                <div class="activity-header">
+                    <div class="activity-title">Cargo Tracking</div>
+                    <a href="#" class="see-all">See All</a>
+                </div>
+                <table class="activity-table">
+                    <thead>
+                        <tr>
+                            <th>Airway Bill #</th>
+                            <th>Cargo Details</th>
+                            <th>Departure</th>
+                            <th>Arrival</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Weight (kg)</th>
+                            <th>Status</th>
+                            <th>Client</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cargo-table-body">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- World Map for Cargo Locations -->
+            <div class="card" style="margin-top: 20px;">
+                <div class="chart-header">
+                    <div class="chart-title">Cargo Locations Map (USA)</div>
+                </div>
+                <div id="leaflet-map" style="width:100%;max-width:900px;height:400px;background:#e9ecef;border-radius:8px;margin:auto;"></div>
+                <div style="margin-top: 10px; font-size: 14px;">
+                    <span style="color: green; font-weight: bold;">●</span> Delivered
+                    <span style="color: red; font-weight: bold; margin-left: 15px;">●</span> Stuck
+                    <span style="color: blue; font-weight: bold; margin-left: 15px;">●</span> In Transit
+                    <span style="color: orange; font-weight: bold; margin-left: 15px;">●</span> Processing
+                    <span style="margin-left: 15px; color: #1a5276; font-weight: bold;">🚚</span> Truck
+                    <span style="margin-left: 15px; color: #8e44ad; font-weight: bold;">🚆</span> Train
+                    <span style="margin-left: 15px; color: #e67e22; font-weight: bold;">✈️</span> Flight
+                </div>
+            </div>
+            
+            <!-- Bottom Row -->
+            <div class="bottom-grid">
+                <div class="card">
+                    <div class="chart-header">
+                        <div class="chart-title">Recent Notifications</div>
+                        <a href="#" class="see-all">See All</a>
+                    </div>
+                    <div class="notification-list" style="max-height: 350px; min-height: 220px;">
+                        <div class="notification-item">
+                            <div class="notification-icon">📝</div>
+                            <div class="notification-details">
+                                <div class="notification-message">New task assigned: "Update user documentation"</div>
+                                <div class="notification-time">2 hours ago</div>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notification-icon">👤</div>
+                            <div class="notification-details">
+                                <div class="notification-message">Sarah Johnson commented on your task</div>
+                                <div class="notification-time">Yesterday</div>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notification-icon">🔔</div>
+                            <div class="notification-details">
+                                <div class="notification-message">Reminder: Team meeting at 2:00 PM today</div>
+                                <div class="notification-time">5 hours ago</div>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notification-icon">🎉</div>
+                            <div class="notification-details">
+                                <div class="notification-message">Congratulations! Titan Cargo awarded "Best Logistics Company 2025"</div>
+                                <div class="notification-time">Today</div>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notification-icon">📅</div>
+                            <div class="notification-details">
+                                <div class="notification-message">Board meeting scheduled for April 10th, 10:00 AM</div>
+                                <div class="notification-time">3 days ago</div>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notification-icon">📦</div>
+                            <div class="notification-details">
+                                <div class="notification-message">Tracking update: Cargo delivered to 1234 Elm St, Dallas, TX</div>
+                                <div class="notification-time">1 hour ago</div>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notification-icon">📦</div>
+                            <div class="notification-details">
+                                <div class="notification-message">Tracking update: Cargo in transit to 5678 Oak Ave, Seattle, WA</div>
+                                <div class="notification-time">30 minutes ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Client Notifications -->
+                <div class="card">
+                    <div class="chart-header">
+                        <div class="chart-title">Client Notifications</div>
+                    </div>
+                    <div class="notification-list" style="max-height: 220px; min-height: 120px;">
+                        <div class="notification-item">
+                            <div class="notification-icon">⭐</div>
+                            <div class="notification-details">
+                                <div class="notification-message"><b>Acme Corp</b> reviewed: "Excellent service and timely delivery!"</div>
+                                <div class="notification-time">Today</div>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notification-icon">⭐</div>
+                            <div class="notification-details">
+                                <div class="notification-message"><b>HealthPlus</b> reviewed: "Professional and secure handling of sensitive cargo."</div>
+                                <div class="notification-time">Yesterday</div>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notification-icon">❓</div>
+                            <div class="notification-details">
+                                <div class="notification-message"><b>BuildIt</b> inquired: "Can you handle oversized machinery shipments to Canada?"</div>
+                                <div class="notification-time">2 days ago</div>
+                            </div>
+                        </div>
+                        <div class="notification-item">
+                            <div class="notification-icon">❓</div>
+                            <div class="notification-details">
+                                <div class="notification-message"><b>FashionHouse</b> inquired: "What are your textile shipping rates for Europe?"</div>
+                                <div class="notification-time">3 days ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Information Banner (moved to bottom, updated for Ivy Kariuki) -->
+                <div class="card" style="padding:0;background:transparent;box-shadow:none;min-height:350px;display:flex;align-items:stretch;">
+                    <div class="admin-banner" style="display:flex;align-items:center;gap:30px;background:linear-gradient(90deg,#1a5276 80%,#f39c12 100%);color:white;padding:32px 40px 32px 30px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.07);width:100%;min-height:320px;">
+                        <img src="https://randomuser.me/api/portraits/men/44.jpg" alt="Norris Frank" style="width:110px;height:110px;border-radius:50%;object-fit:cover;border:4px solid #f39c12;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                        <div style="color:white;">
+                            <div style="font-size:2rem;font-weight:700;letter-spacing:1px;line-height:1.2;">Norris Frank <span style="font-size:1.1rem;font-weight:400;opacity:0.85;">(Administrator)</span></div>
+                            <div style="margin:16px 0 10px 0;font-size:1.18rem;line-height:1.4;">Skill Sets: <span style="font-weight:500;">Logistics Management, Supply Chain Optimization, Secure Transport, Team Leadership, Data Analytics, Client Relations</span></div>
+                            <div style="font-size:1.13rem;opacity:0.98;max-width:700px;line-height:1.5;">Vision: <span style="font-weight:500;">To transform Titan Cargo into the most trusted, innovative, and secure logistics partner in the world, delivering excellence for every client and every shipment.</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Projects Section (hidden by default) -->
+        <div class="dashboard-content" id="projects-section" style="display:none;">
+            <h1 class="page-title">Projects</h1>
+            <!-- Graphs Row -->
+            <div style="display:flex;flex-wrap:wrap;gap:30px;margin-bottom:30px;">
+                <div class="card" style="flex:2;min-width:340px;max-width:700px;display:flex;flex-direction:column;align-items:center;">
+                    <div class="chart-header" style="width:100%;"><div class="chart-title">Profit & Loss Overview</div></div>
+                    <div style="width:100%;max-width:600px;">
+                        <canvas id="projects-profitloss-graph" width="600" height="260" style="display:block;width:100%;height:260px;"></canvas>
+                    </div>
+                </div>
+                <div class="card" style="flex:1;min-width:340px;max-width:500px;display:flex;flex-direction:column;align-items:center;">
+                    <div class="chart-header" style="width:100%;"><div class="chart-title">Productivity Metrics</div></div>
+                    <div style="width:100%;max-width:400px;">
+                        <canvas id="projects-productivity-graph" width="400" height="260" style="display:block;width:100%;height:260px;"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="overview-cards" id="projects-graphs">
+                <div class="card stat-card">
+                    <div class="stat-icon projects">📈</div>
+                    <div class="stat-details">
+                        <h3>Total Trips</h3>
+                        <div class="value" id="total-trips">0</div>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon tasks">⛽</div>
+                    <div class="stat-details">
+                        <h3>Total Fuel Used (L)</h3>
+                        <div class="value" id="total-fuel">0</div>
+                    </div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-icon revenue">🛣️</div>
+                    <div class="stat-details">
+                        <h3>Total Distance (km)</h3>
+                        <div class="value" id="total-distance">0</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Vehicle Details Table -->
+            <div class="card" style="margin-top:30px;overflow-x:auto;">
+                <div class="chart-header">
+                    <div class="chart-title">Vehicle Trips Details</div>
+                </div>
+                <table class="activity-table" style="min-width:1200px;">
+                    <thead>
+                        <tr>
+                            <th>Flight ID</th>
+                            <th>Destination</th>
+                            <th>Departure</th>
+                            <th>Arrival</th>
+                            <th>Fuel Used (L)</th>
+                            <th>Distance (km)</th>
+                            <th>Pilot</th>
+                            <th>Co-pilot</th>
+                            <th>Border Control Permit</th>
+                            <th>Tax Valuation Payment</th>
+                            <th>Delivery Confirmation Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projects-vehicle-table">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Tasks Section (hidden by default) -->
+        <div class="dashboard-content" id="tasks-section" style="display:none;">
+            <h1 class="page-title">Tasks</h1>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <!-- Completed Tasks -->
+                <div class="card" style="flex:1; min-width:270px;">
+                    <div class="chart-header"><div class="chart-title">Completed (This Week)</div></div>
+                    <ul id="tasks-completed-list" style="list-style:none; padding:0;"></ul>
+                </div>
+                <!-- Ongoing Tasks -->
+                <div class="card" style="flex:1; min-width:270px;">
+                    <div class="chart-header"><div class="chart-title">Ongoing</div></div>
+                    <ul id="tasks-ongoing-list" style="list-style:none; padding:0;"></ul>
+                </div>
+                <!-- Pending Tasks -->
+                <div class="card" style="flex:1; min-width:270px;">
+                    <div class="chart-header"><div class="chart-title">Pending</div></div>
+                    <ul id="tasks-pending-list" style="list-style:none; padding:0;"></ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reports Section (hidden by default) -->
+        <div class="dashboard-content" id="reports-section" style="display:none;">
+            <h1 class="page-title">Reports</h1>
+            <div style="display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start;">
+                <!-- Admin ↔ Boss Chat -->
+                <div class="card" style="flex:1;min-width:340px;max-width:650px;">
+                    <div class="chart-header"><div class="chart-title">Admin ↔ Boss Briefing</div></div>
+                    <!-- Profit Summary -->
+                    <div id="profit-summary" style="display:flex;gap:18px;margin-bottom:18px;">
+                        <div style="background:#eaf6fb;padding:12px 18px;border-radius:8px;min-width:120px;text-align:center;">
+                            <div style="font-size:13px;color:#7f8c8d;">Total Revenue</div>
+                            <div style="font-size:1.2rem;font-weight:600;color:#1a5276;" id="profit-revenue">KES0</div>
+                        </div>
+                        <div style="background:#fdf6e3;padding:12px 18px;border-radius:8px;min-width:120px;text-align:center;">
+                            <div style="font-size:13px;color:#7f8c8d;">Total Expenses</div>
+                            <div style="font-size:1.2rem;font-weight:600;color:#e67e22;" id="profit-expenses">KES0</div>
+                        </div>
+                        <div style="background:#eafbe6;padding:12px 18px;border-radius:8px;min-width:120px;text-align:center;">
+                            <div style="font-size:13px;color:#7f8c8d;">Total Profit</div>
+                            <div style="font-size:1.2rem;font-weight:600;color:#27ae60;" id="profit-profit">KES0</div>
+                        </div>
+                        <div style="background:#fbeee6;padding:12px 18px;border-radius:8px;min-width:120px;text-align:center;">
+                            <div style="font-size:13px;color:#7f8c8d;">Profit Margin</div>
+                            <div style="font-size:1.2rem;font-weight:600;color:#e67e22;" id="profit-margin">0%</div>
+                        </div>
+                    </div>
+                    <div id="chat-boss" style="height:520px;overflow-y:auto;padding:10px 0 0 0;"></div>
+                </div>
+                <!-- Admin ↔ Clients Chat -->
+                <div class="card" style="flex:1;min-width:340px;max-width:650px;">
+                    <div class="chart-header"><div class="chart-title">Admin ↔ Clients Brief/Debrief & Negotiations</div></div>
+                    <!-- Negotiation Summary -->
+                    <div id="negotiation-summary" style="background:#fdf6e3;padding:12px 18px;border-radius:8px;margin-bottom:18px;">
+                        <div style="font-size:13px;color:#7f8c8d;">Active Negotiations</div>
+                        <ul style="margin:8px 0 0 18px;padding:0;font-size:1rem;color:#e67e22;">
+                            <li>Acme Corp: 5% discount requested for next shipment</li>
+                            <li>BuildIt: Special handling for oversized cargo</li>
+                            <li>FashionHouse: Rate negotiation for textile shipping to Europe</li>
+                        </ul>
+                    </div>
+                    <div id="chat-clients" style="height:520px;overflow-y:auto;padding:10px 0 0 0;"></div>
+                </div>
+            </div>
+            <!-- Bottom row: Licenses and High Value Contracts -->
+            <div style="display:flex;gap:30px;flex-wrap:wrap;margin-top:30px;">
+                <div class="card" style="flex:1;min-width:320px;max-width:500px;">
+                    <div class="chart-header"><div class="chart-title">Licenses</div></div>
+                    <ul style="padding:10px 0 0 18px;list-style:disc;">
+                        <li>FAA Air Carrier Certificate: <b>AC-2025-XYZ</b></li>
+                        <li>IATA Cargo Agent License: <b>IATA-987654</b></li>
+                        <li>US Customs Bond: <b>CBP-2025-1234</b></li>
+                        <li>Hazmat Transport Permit: <b>HZ-2025-555</b></li>
+                    </ul>
+                </div>
+                <div class="card" style="flex:1;min-width:320px;max-width:500px;">
+                    <div class="chart-header"><div class="chart-title">High Value Contracts</div></div>
+                    <ul style="padding:10px 0 0 18px;list-style:disc;">
+                        <li><a href="#" style="color:#1a5276;text-decoration:underline;">Acme Corp - Annual Electronics Shipping (KES2.5M)</a></li>
+                        <li><a href="#" style="color:#1a5276;text-decoration:underline;">HealthPlus - Pharma Logistics (KES1.8M)</a></li>
+                        <li><a href="#" style="color:#1a5276;text-decoration:underline;">BuildIt - Machinery Transport (KES1.2M)</a></li>
+                        <li><a href="#" style="color:#1a5276;text-decoration:underline;">FashionHouse - Textile Exports (KES950K)</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Profile Section (hidden by default) -->
+    <div class="dashboard-content" id="profile-section" style="display:none;">
+        <h1 class="page-title">Profile</h1>
+        
+        <div class="card">
+            <div class="chart-header"><div class="chart-title">Your Profile</div></div>
+            
+            <!-- Admin Details with Photo -->
+            <div class="profile-card-section" style="display:flex;align-items:center;gap:20px;">
+                <img id="profile-photo" src="" alt="Admin Photo" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);">
+                <div>
+                    <div class="profile-detail-row" style="margin-bottom:5px;">
+                        <div class="profile-detail-label" style="width:auto;margin-right:10px;">Name:</div>
+                        <div class="profile-detail-value" id="profile-name"></div>
+                    </div>
+                    <div class="profile-detail-row" style="margin-bottom:5px;">
+                        <div class="profile-detail-label" style="width:auto;margin-right:10px;">Role:</div>
+                        <div class="profile-detail-value" id="profile-role"></div>
+                    </div>
+                    <div class="profile-detail-row">
+                        <div class="profile-detail-label" style="width:auto;margin-right:10px;">Email:</div>
+                        <div class="profile-detail-value" id="profile-email"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- More Relevant Information (Skills and Vision) -->
+            <div class="profile-card-section">
+                <div class="chart-header"><div class="chart-title">Skills & Vision</div></div>
+                <div style="margin-bottom:10px;">
+                    <div class="profile-detail-label" style="width:auto;">Skill Sets:</div>
+                    <div class="profile-detail-value" id="profile-skills" style="font-size:1rem;"></div>
+                </div>
+                <div>
+                    <div class="profile-detail-label" style="width:auto;">Vision:</div>
+                    <div class="profile-detail-value" id="profile-vision" style="font-size:1rem;"></div>
+                </div>
+            </div>
+
+            <!-- Account Settings -->
+            <div class="profile-card-section">
+                <div class="chart-header"><div class="chart-title">Account Settings</div></div>
+                <div class="profile-form-group">
+                    <label for="new-name">Change Name:</label>
+                    <input type="text" id="new-name" placeholder="New Name">
+                </div>
+                <div class="profile-form-group">
+                    <label for="new-password">Change Password:</label>
+                    <input type="password" id="new-password" placeholder="New Password">
+                    <div id="password-strength" style="height: 6px; background: #ddd; border-radius: 3px; margin-top: 5px; width: 100%;">
+                        <div id="password-strength-bar" style="height: 100%; width: 0%; background: red; border-radius: 3px; transition: width 0.3s ease, background 0.3s ease;"></div>
+                    </div>
+                </div>
+                <button class="profile-button">Save Changes</button>
+            </div>
+
+            <!-- Theme Settings -->
+            <div class="profile-card-section" style="border-bottom: none; padding-bottom: 0; margin-bottom: 0;">
+                <div class="chart-header"><div class="chart-title">Theme Settings</div></div>
+                <div class="theme-switch">
+                    <label for="dark-mode-toggle">Dark Mode:</label>
+                    <label class="switch">
+                      <input type="checkbox" id="dark-mode-toggle">
+                      <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Placeholder sections for other pages -->
+    <div class="dashboard-content" id="calendar-section" style="display:none;">
+        <h1 class="page-title">Calendar</h1>
+        <div class="card">
+            <div class="chart-header"><div class="chart-title">Upcoming Events</div></div>
+            <ul id="calendar-events-list" style="list-style:none; padding:0;"></ul>
+        </div>
+    </div>
+    <div class="dashboard-content" id="clients-section" style="display:none;">
+        <h1 class="page-title">Clients</h1>
+        <div id="clients-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;"></div>
+    </div>
+    <div class="dashboard-content" id="team-section" style="display:none;">
+        <h1 class="page-title">Team</h1>
+        <div id="team-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px;"></div>
+    </div>
+
+    <!-- Settings Section (hidden by default) -->
+    <div class="dashboard-content" id="settings-section" style="display:none;">
+        <h1 class="page-title">Settings</h1>
+        <div class="card">
+            Settings content and options go here.
+            For example:
+            <ul>
+                <li>General Settings</li>
+                <li>Notification Settings</li>
+                <li>Integrations</li>
+                <li>Billing</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Mock data for dashboard
+        const mockData = {
+            user: {
+                id: 1,
+                name: 'Norris Frank', // Changed name from 'Titan Cargo Admin'
+                email: 'norrisfrankmeyo@gmail.com', // Added email
+                role: 'Administrator',
+                photoUrl: 'https://randomuser.me/api/portraits/men/44.jpg', // Added photo URL
+                skills: 'Logistics Management, Supply Chain Optimization, Secure Transport, Team Leadership, Data Analytics, Client Relations', // Added skills
+                vision: 'To transform Titan Cargo into the most trusted, innovative, and secure logistics partner in the world, delivering excellence for every client and every shipment.' // Added vision
+            },
+            stats: {
+                revenue: {
+                    total: 348250,
+                    trend: 12.5,
+                    trendDirection: 'up'
+                },
+                users: {
+                    total: 1287,
+                    trend: 8.3,
+                    trendDirection: 'up'
+                },
+                projects: {
+                    total: 42,
+                    trend: 4.5,
+                    trendDirection: 'up'
+                },
+                tasks: {
+                    total: 768,
+                    trend: -2.1,
+                    trendDirection: 'down'
+                }
+            },
+            revenueData: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                values: [85000, 92000, 78000, 93250],
+                expenses: [60000, 70000, 65000, 70000],
+                profit: [25000, 22000, 13000, 23250]
+            },
+            productivityData: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                operations: [80, 85, 90, 88, 92, 95],
+                logistics: [75, 80, 85, 83, 87, 90],
+                support: [70, 78, 82, 80, 85, 88]
+            },
+            projectStatus: {
+                labels: ['Completed', 'In Progress', 'Pending', 'Cancelled'],
+                values: [15, 18, 7, 2]
+            },
+            fleetStatus: {
+                ships: { operating: 8, grounded: 2 },
+                planes: { operating: 12, grounded: 1 },
+                trains: { operating: 5, grounded: 0 },
+                trucks: { operating: 30, grounded: 4 }
+            },
+            notifications: [
+                {
+                    id: 1,
+                    message: 'New task assigned: "Update user documentation"',
+                    time: '2 hours ago',
+                    type: 'task'
+                },
+                {
+                    id: 2,
+                    message: 'Sarah Johnson commented on your task',
+                    time: 'Yesterday',
+                    type: 'comment'
+                },
+                {
+                    id: 3,
+                    message: 'Reminder: Team meeting at 2:00 PM today',
+                    time: '5 hours ago',
+                    type: 'reminder'
+                },
+                {
+                    id: 4,
+                    message: 'Project "Website Redesign" marked as completed',
+                    time: '1 day ago',
+                    type: 'project'
+                }
+            ],
+            // Cargo tracking mock data
+            cargo: [
+                // Delivered
+                { airwayBill: 'AWB123456', details: 'Electronics - 20 boxes', departureDate: 'Mar 1, 2025', departureTime: '08:00', arrivalDate: 'Mar 2, 2025', arrivalTime: '14:00', from: 'LAX', to: 'JFK', weight: 1200, status: 'Delivered', state: 'CA', client: { name: 'Acme Corp', info: 'acme@example.com' } },
+                { airwayBill: 'AWB123457', details: 'Books - 10 boxes', departureDate: 'Mar 1, 2025', departureTime: '09:00', arrivalDate: 'Mar 2, 2025', arrivalTime: '15:00', from: 'ORD', to: 'LGA', weight: 500, status: 'Delivered', state: 'IL', client: { name: 'BookWorld', info: 'info@bookworld.com' } },
+                // In Transit
+                { airwayBill: 'AWB654321', details: 'Pharmaceuticals - 10 pallets', departureDate: 'Mar 3, 2025', departureTime: '10:30', arrivalDate: 'Mar 4, 2025', arrivalTime: '16:45', from: 'DFW', to: 'MIA', weight: 3500, status: 'In Transit', state: 'TX', client: { name: 'HealthPlus', info: 'contact@healthplus.com' } },
+                { airwayBill: 'AWB654322', details: 'Furniture - 5 sets', departureDate: 'Mar 3, 2025', departureTime: '11:00', arrivalDate: 'Mar 5, 2025', arrivalTime: '18:00', from: 'PHX', to: 'SEA', weight: 2000, status: 'In Transit', state: 'AZ', client: { name: 'FurniCo', info: 'sales@furnico.com' } },
+                // Processing
+                { airwayBill: 'AWB789012', details: 'Machinery - 2 crates', departureDate: 'Mar 2, 2025', departureTime: '13:00', arrivalDate: 'Mar 5, 2025', arrivalTime: '09:30', from: 'DEN', to: 'BOS', weight: 2200, status: 'Processing', state: 'CO', client: { name: 'BuildIt', info: 'info@buildit.com' } },
+                { airwayBill: 'AWB789013', details: 'Medical Equipment', departureDate: 'Mar 2, 2025', departureTime: '14:00', arrivalDate: 'Mar 6, 2025', arrivalTime: '10:00', from: 'ATL', to: 'CLT', weight: 900, status: 'Processing', state: 'GA', client: { name: 'MedTech', info: 'contact@medtech.com' } },
+                // Stuck
+                { airwayBill: 'AWB345678', details: 'Textiles - 50 rolls', departureDate: 'Mar 1, 2025', departureTime: '07:15', arrivalDate: 'Mar 3, 2025', arrivalTime: '12:00', from: 'MCO', to: 'EWR', weight: 1800, status: 'Stuck', state: 'FL', client: { name: 'FashionHouse', info: 'orders@fashionhouse.com' } },
+                { airwayBill: 'AWB345679', details: 'Auto Parts', departureDate: 'Mar 1, 2025', departureTime: '08:30', arrivalDate: 'Mar 4, 2025', arrivalTime: '13:00', from: 'SEA', to: 'DTW', weight: 1500, status: 'Stuck', state: 'WA', client: { name: 'AutoZone', info: 'support@autozone.com' } },
+                // Government Classified
+                { airwayBill: 'AWB999001', details: 'Classified Documents - Level 5<br><span style="color:#e74c3c;font-weight:bold;">Government Classified</span><br>Security: Armed Escort, GPS Tracking', departureDate: 'Mar 5, 2025', departureTime: '06:00', arrivalDate: 'Mar 5, 2025', arrivalTime: '12:00', from: 'DCA', to: 'LAX', weight: 50, status: 'In Transit', state: 'DC', client: { name: 'US Gov', info: 'Contact: Secure Line' } },
+                { airwayBill: 'AWB999002', details: 'Nuclear Material - Secure Container<br><span style="color:#e74c3c;font-weight:bold;">Government Classified</span><br>Security: Hazmat, Armed Convoy, Real-time Monitoring', departureDate: 'Mar 6, 2025', departureTime: '04:00', arrivalDate: 'Mar 7, 2025', arrivalTime: '18:00', from: 'SFO', to: 'ORF', weight: 200, status: 'Processing', state: 'CA', client: { name: 'DOE', info: 'Contact: Secure Line' } },
+                // Regular
+                { airwayBill: 'AWB888888', details: 'Luxury Cars - 3 units', departureDate: 'Mar 8, 2025', departureTime: '10:00', arrivalDate: 'Mar 10, 2025', arrivalTime: '16:00', from: 'DET', to: 'MIA', weight: 6000, status: 'In Transit', state: 'MI', client: { name: 'AutoLux', info: 'lux@autolux.com' } }
+            ],
+            // Projects vehicle trips mock data
+            projects: [
+                { id: 'FLT-900', destination: 'JFK, NY', departure: 'Mar 3, 2025 09:00', arrival: 'Mar 3, 2025 13:00', fuel: 2500, distance: 2200, driver: 'Alex King', codriver: 'Sara Queen', borderPermit: 'BCP-2025-001', taxValuation: 'KES2,500', deliveryReceipt: 'RCPT-9001' },
+                { id: 'FLT-901', destination: 'LAX, CA', departure: 'Mar 4, 2025 14:00', arrival: 'Mar 4, 2025 18:30', fuel: 2600, distance: 2300, driver: 'Tom Lane', codriver: 'Eva Miles', borderPermit: 'BCP-2025-002', taxValuation: 'KES2,700', deliveryReceipt: 'RCPT-9002' },
+                { id: 'FLT-902', destination: 'ORD, IL', departure: 'Mar 5, 2025 07:00', arrival: 'Mar 5, 2025 11:30', fuel: 2400, distance: 2100, driver: 'Sam Lee', codriver: 'Nina Fox', borderPermit: 'BCP-2025-003', taxValuation: 'KES2,300', deliveryReceipt: 'RCPT-9003' },
+                { id: 'FLT-903', destination: 'ATL, GA', departure: 'Mar 6, 2025 10:00', arrival: 'Mar 6, 2025 14:20', fuel: 2550, distance: 2250, driver: 'Chris Ray', codriver: 'Lily Moon', borderPermit: 'BCP-2025-004', taxValuation: 'KES2,600', deliveryReceipt: 'RCPT-9004' },
+                { id: 'FLT-904', destination: 'DFW, TX', departure: 'Mar 7, 2025 12:00', arrival: 'Mar 7, 2025 16:30', fuel: 2650, distance: 2350, driver: 'Ben Star', codriver: 'Mia Sun', borderPermit: 'BCP-2025-005', taxValuation: 'KES2,800', deliveryReceipt: 'RCPT-9005' }
+            ],
+            // Tasks mock data
+            tasks: {
+                completed: [
+                    { title: 'Update user documentation', assignedTo: 'Sarah Johnson', due: 'Mar 5, 2025', status: 'Completed' },
+                    { title: 'Deliver cargo to Dallas', assignedTo: 'John Doe', due: 'Mar 4, 2025', status: 'Completed' },
+                    { title: 'Monthly fleet maintenance', assignedTo: 'Mike Brown', due: 'Mar 3, 2025', status: 'Completed' },
+                    { title: 'Client feedback review', assignedTo: 'Anna Lee', due: 'Mar 2, 2025', status: 'Completed' }
+                ],
+                ongoing: [
+                    { title: 'Prepare Q1 performance report', assignedTo: 'Ivy Kariuki', due: 'Mar 10, 2025', status: 'Ongoing' },
+                    { title: 'Cargo tracking system upgrade', assignedTo: 'Paul Green', due: 'Mar 12, 2025', status: 'Ongoing' },
+                    { title: 'Audit flight cargo compliance', assignedTo: 'Nina Fox', due: 'Mar 14, 2025', status: 'Ongoing' }
+                ],
+                pending: [
+                    { title: 'Schedule team training', assignedTo: 'Linda White', due: 'Mar 15, 2025', status: 'Pending' },
+                    { title: 'Renew insurance for fleet', assignedTo: 'Chris Black', due: 'Mar 18, 2025', status: 'Pending' },
+                    { title: 'Update pilot certifications', assignedTo: 'Ben Star', due: 'Mar 20, 2025', status: 'Pending' },
+                    { title: 'Review new customs regulations', assignedTo: 'Lily Moon', due: 'Mar 22, 2025', status: 'Pending' }
+                ]
+            },
+            // Reports chat mock data
+            reports: {
+                boss: [
+                    { sender: 'Admin', time: '09:00 AM', message: 'Good morning, boss. Here is the weekly progress update.' },
+                    { sender: 'Boss', time: '09:01 AM', message: 'Morning! Go ahead.' },
+                    { sender: 'Admin', time: '09:02 AM', message: 'All cargo deliveries are on schedule. 4 major projects completed, 2 ongoing.' },
+                    { sender: 'Admin', time: '09:03 AM', message: 'No incidents reported. Fleet maintenance completed for the month.' },
+                    { sender: 'Admin', time: '09:04 AM', message: 'Total revenue: KES348,250. Expenses: KES265,000. Net profit: KES83,250. Margin: 23.9%.' },
+                    { sender: 'Boss', time: '09:05 AM', message: 'Excellent. Any client issues?' },
+                    { sender: 'Admin', time: '09:06 AM', message: 'No major issues. Clients are satisfied with delivery times.' },
+                    { sender: 'Boss', time: '09:07 AM', message: 'Great work. Prepare the Q1 report for next week.' },
+                    { sender: 'Admin', time: '09:08 AM', message: 'Will do. Thank you.' }
+                ],
+                clients: [
+                    { sender: 'Admin', time: '10:00 AM', message: 'Dear clients, your shipments have arrived safely. Please confirm receipt.' },
+                    { sender: 'Acme Corp', time: '10:02 AM', message: 'Confirmed. Thank you for the timely delivery.' },
+                    { sender: 'Admin', time: '10:05 AM', message: 'We appreciate your feedback. Let us know if you need further assistance.' },
+                    { sender: 'HealthPlus', time: '10:10 AM', message: 'Received our cargo in good condition. Thanks!' },
+                    { sender: 'Admin', time: '10:12 AM', message: 'Glad to hear! Next shipment is scheduled for March 12.' },
+                    { sender: 'BuildIt', time: '10:15 AM', message: 'Can you confirm ETA for our machinery?' },
+                    { sender: 'Admin', time: '10:16 AM', message: 'ETA is March 14, 4:00 PM. Will update if there are changes.' },
+                    { sender: 'FashionHouse', time: '10:20 AM', message: 'Thanks for the update and the smooth process.' },
+                    // Negotiation messages
+                    { sender: 'Acme Corp', time: '10:25 AM', message: 'We would like to request a 5% discount for our next shipment due to increased volume.' },
+                    { sender: 'Admin', time: '10:27 AM', message: 'Thank you for your loyalty. We can approve a 3% discount, and will review for more based on future shipments.' },
+                    { sender: 'BuildIt', time: '10:30 AM', message: 'Can you provide special handling for oversized cargo?' },
+                    { sender: 'Admin', time: '10:32 AM', message: 'Yes, we can arrange special handling. Our team will contact you for details.' },
+                    { sender: 'FashionHouse', time: '10:35 AM', message: 'We need to negotiate rates for textile shipping to Europe.' },
+                    { sender: 'Admin', time: '10:37 AM', message: 'Let\'s schedule a call to discuss your requirements and offer the best rates.' }
+                ]
+            },
+            // Projects graphs mock data
+            projectsGraphs: {
+                profitLoss: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    revenue: [22000, 25000, 27000, 26000, 29000, 31000],
+                    expenses: [12000, 13500, 14000, 13800, 15000, 16000],
+                    profit: [10000, 11500, 13000, 12200, 14000, 15000]
+                },
+                productivity: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    tripsCompleted: [12, 14, 15, 13, 16, 18],
+                    avgDistance: [2100, 2200, 2150, 2250, 2300, 2400],
+                    utilization: [81, 85, 88, 84, 90, 93]
+                }
+            },
+            // Calendar mock data
+            calendarEvents: [
+                { title: 'Team Meeting', date: 'Mar 10, 2025', time: '10:00 AM', location: 'Conference Room A' },
+                { title: 'Client Call - Acme Corp', date: 'Mar 11, 2025', time: '02:00 PM', location: 'Online' },
+                { title: 'Flight FLT-900 Departure', date: 'Mar 3, 2025', time: '09:00 AM', location: 'JFK Airport' },
+                { title: 'Review Q1 Reports', date: 'Mar 14, 2025', time: '09:30 AM', location: 'Office' },
+                { title: 'Fleet Maintenance Review', date: 'Mar 17, 2025', time: '11:00 AM', location: 'Hangar 5' }
+            ],
+            // Clients mock data
+            clients: [
+                { id: 1, name: 'Acme Corp', contactPerson: 'John Smith', email: 'john.smith@acme.com', phone: '+254 722 123 456', contractValue: '2.5M', status: 'Active', planeType: 'Boeing 747-8F' },
+                { id: 2, name: 'HealthPlus', contactPerson: 'Jane Doe', email: 'jane.doe@healthplus.com', phone: '+254 733 987 654', contractValue: '1.8M', status: 'Active', planeType: 'Airbus A330-200F' },
+                { id: 3, name: 'BuildIt', contactPerson: 'Peter Jones', email: 'peter.jones@buildit.com', phone: '+254 700 555 121', contractValue: '1.2M', status: 'Active', planeType: 'Boeing 777F' },
+                { id: 4, name: 'FashionHouse', contactPerson: 'Sarah Brown', email: 'sarah.brown@fashionhouse.com', phone: '+254 711 222 333', contractValue: '0.95M', status: 'Active', planeType: 'Boeing 767-300F' },
+                { id: 5, name: 'Global Imports', contactPerson: 'David Green', email: 'david.green@globalimports.com', phone: '+254 788 444 555', contractValue: '0.7M', status: 'Active', planeType: 'Tupolev Tu-204C' }
+            ],
+            // Team mock data
+            teamMembers: [
+                { id: 1, name: 'Norris Frank', role: 'Administrator', email: 'norrisfrankmeyo@gmail.com', photoUrl: 'https://randomuser.me/api/portraits/men/44.jpg' },
+                { id: 2, name: 'Kwame Davis', role: 'Truck Driver', email: 'kwame.davis@example.com', photoUrl: 'https://randomuser.me/api/portraits/men/79.jpg' },
+                { id: 3, name: 'Ayana Brown', role: 'Co-driver', email: 'ayana.brown@example.com', photoUrl: 'https://randomuser.me/api/portraits/women/80.jpg' },
+                { id: 4, name: 'Jamal Williams', role: 'Train Operator', email: 'jamal.williams@example.com', photoUrl: 'https://randomuser.me/api/portraits/men/81.jpg' },
+                { id: 5, name: 'Fatima Ahmed', role: 'Ship Captain', email: 'fatima.ahmed@example.com', photoUrl: 'https://randomuser.me/api/portraits/women/81.jpg' },
+                { id: 6, name: 'Sekou Camara', role: 'Pilot', email: 'sekou.camara@example.com', photoUrl: 'https://randomuser.me/api/portraits/men/82.jpg' },
+                { id: 7, name: 'Zuri Adams', role: 'Co-pilot', email: 'zuri.adams@example.com', photoUrl: 'https://randomuser.me/api/portraits/women/82.jpg' },
+                { id: 8, name: 'Tariq Khan', role: 'Pilot', email: 'tariq.khan@example.com', photoUrl: 'https://randomuser.me/api/portraits/men/83.jpg' },
+                 { id: 9, name: 'Aisha Hassan', role: 'Logistics Coordinator', email: 'aisha.hassan@example.com', photoUrl: 'https://randomuser.me/api/portraits/women/83.jpg' },
+                 { id: 10, name: 'Malik Jones', role: 'Fleet Manager', email: 'malik.jones@example.com', photoUrl: 'https://randomuser.me/api/portraits/men/84.jpg' }
+            ],
+            // Added mock data for messages
+            messages: [
+                { id: 1, sender: 'Support Team', time: '1 hour ago', message: 'Your support ticket #1234 has been updated.' },
+                { id: 2, sender: 'Client: Acme Corp', time: '3 hours ago', message: 'Inquiry about next shipment status.' },
+                { id: 3, sender: 'Admin', time: 'Yesterday', message: 'Meeting agenda sent for tomorrow.' }
+            ]
+        };
+
+        // Toggle sidebar
+        document.getElementById('menu-toggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('expanded');
+        });
+        
+        // Handle nav item clicks
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                navItems.forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+                // Hide panels when navigating
+                document.getElementById('notification-panel').style.display = 'none';
+                document.getElementById('message-panel').style.display = 'none';
+
+                const navText = this.querySelector('span')?.textContent;
+                // Navigation logic
+                if (navText === 'Dashboard') {
+                    document.getElementById('dashboard-section').style.display = 'block';
+                    document.getElementById('projects-section').style.display = 'none';
+                    document.getElementById('tasks-section').style.display = 'none';
+                    document.getElementById('reports-section').style.display = 'none';
+                    document.getElementById('team-section').style.display = 'none';
+                    document.getElementById('clients-section').style.display = 'none';
+                    document.getElementById('calendar-section').style.display = 'none';
+                    document.getElementById('profile-section').style.display = 'none';
+                } else if (navText === 'Projects') {
+                    showProjectsSection();
+                    document.getElementById('tasks-section').style.display = 'none';
+                    document.getElementById('reports-section').style.display = 'none';
+                    document.getElementById('team-section').style.display = 'none';
+                    document.getElementById('clients-section').style.display = 'none';
+                    document.getElementById('calendar-section').style.display = 'none';
+                    document.getElementById('profile-section').style.display = 'none';
+                } else if (navText === 'Tasks') {
+                    showTasksSection();
+                    document.getElementById('reports-section').style.display = 'none';
+                    document.getElementById('team-section').style.display = 'none';
+                    document.getElementById('clients-section').style.display = 'none';
+                    document.getElementById('calendar-section').style.display = 'none';
+                    document.getElementById('profile-section').style.display = 'none';
+                } else if (navText === 'Reports') {
+                    showReportsSection();
+                    document.getElementById('team-section').style.display = 'none';
+                    document.getElementById('clients-section').style.display = 'none';
+                    document.getElementById('calendar-section').style.display = 'none';
+                    document.getElementById('profile-section').style.display = 'none';
+                } else if (navText === 'Team') {
+                    showTeamSection();
+                    document.getElementById('dashboard-section').style.display = 'none';
+                    document.getElementById('projects-section').style.display = 'none';
+                    document.getElementById('tasks-section').style.display = 'none';
+                    document.getElementById('reports-section').style.display = 'none';
+                    document.getElementById('clients-section').style.display = 'none';
+                    document.getElementById('calendar-section').style.display = 'none';
+                    document.getElementById('profile-section').style.display = 'none'; // Placeholder
+                } else if (navText === 'Clients') {
+                    showClientsSection();
+                    document.getElementById('dashboard-section').style.display = 'none';
+                    document.getElementById('projects-section').style.display = 'none';
+                    document.getElementById('tasks-section').style.display = 'none';
+                    document.getElementById('reports-section').style.display = 'none';
+                    document.getElementById('team-section').style.display = 'none';
+                    document.getElementById('calendar-section').style.display = 'none';
+                    document.getElementById('profile-section').style.display = 'none'; // Placeholder
+                } else if (navText === 'Calendar') {
+                    showCalendarSection();
+                    document.getElementById('dashboard-section').style.display = 'none';
+                    document.getElementById('projects-section').style.display = 'none';
+                    document.getElementById('tasks-section').style.display = 'none';
+                    document.getElementById('reports-section').style.display = 'none';
+                    document.getElementById('team-section').style.display = 'none';
+                    document.getElementById('clients-section').style.display = 'none';
+                    document.getElementById('profile-section').style.display = 'none'; // Placeholder
+                } else if (navText === 'Profile') {
+                    showProfileSection();
+                    document.getElementById('dashboard-section').style.display = 'none';
+                    document.getElementById('projects-section').style.display = 'none';
+                    document.getElementById('tasks-section').style.display = 'none';
+                    document.getElementById('reports-section').style.display = 'none';
+                    document.getElementById('team-section').style.display = 'none';
+                    document.getElementById('clients-section').style.display = 'none';
+                    document.getElementById('calendar-section').style.display = 'none';
+                } else if (navText === 'Help & Support') { // Keep Help & Support functionality
+                    alert(`Navigating to ${navText} page`);
+                } else if (navText !== 'Logout') { // For any other link besides Logout
+                    alert(`Navigating to ${navText} page`);
+                } else if (navText) {
+                    alert(`Navigating to ${navText} page`);
+                }
+            });
+        });
+        
+        // Update UI with mock data
+        function updateDashboard() {
+            // Update user info
+            updateUserInfo(mockData.user);
+            
+            // Update dashboard stats
+            updateDashboardStats(mockData.stats);
+            
+            // Update charts
+            updateRevenueChart(mockData.revenueData);
+            updateProductivityChart(mockData.productivityData);
+            updateProjectStatusChart(mockData.projectStatus);
+            updateFleetStatusTable(mockData.fleetStatus);
+            
+            // Update cargo tracking table
+            updateCargoTracking(mockData.cargo);
+            
+            // Update notifications and messages panels (initial load)
+            updateNotificationPanel(mockData.notifications);
+            updateMessagePanel(mockData.messages);
+            
+            // Set up event listeners for interactive elements
+            setupEventListeners();
+        }
+        
+        function updateUserInfo(user) {
+            // Update user avatar and name
+            const userAvatar = document.querySelector('.user-avatar');
+            const userName = document.querySelector('.user-name');
+            const userRole = document.querySelector('.user-role');
+            const profileDropdown = document.querySelector('.profile-dropdown');
+            
+            if (userAvatar) userAvatar.textContent = user.name.split(' ').map(n => n[0]).join(''); // Use new name
+            if (userName) userName.textContent = user.name; // Use new name
+            if (userRole) userRole.textContent = user.role;
+            if (profileDropdown) profileDropdown.textContent = user.name.split(' ').map(n => n[0]).join(''); // Use new name
+        }
+        
+        function updateDashboardStats(stats) {
+            // Update revenue stat
+            const revenueValue = document.querySelector('.stat-card:nth-child(1) .value');
+            const revenueTrend = document.querySelector('.stat-card:nth-child(1) .trend');
+            
+            if (revenueValue) revenueValue.textContent = `KES${stats.revenue.total.toLocaleString()}`;
+            if (revenueTrend) {
+                revenueTrend.textContent = `${stats.revenue.trendDirection === 'up' ? '↑' : '↓'} ${Math.abs(stats.revenue.trend)}% from last month`;
+                revenueTrend.className = `trend ${stats.revenue.trendDirection}`;
+            }
+            
+            // Update users stat
+            const usersValue = document.querySelector('.stat-card:nth-child(2) .value');
+            const usersTrend = document.querySelector('.stat-card:nth-child(2) .trend');
+            
+            if (usersValue) usersValue.textContent = stats.users.total.toLocaleString();
+            if (usersTrend) {
+                usersTrend.textContent = `${stats.users.trendDirection === 'up' ? '↑' : '↓'} ${Math.abs(stats.users.trend)}% from last month`;
+                usersTrend.className = `trend ${stats.users.trendDirection}`;
+            }
+            
+            // Update projects stat
+            const projectsValue = document.querySelector('.stat-card:nth-child(3) .value');
+            const projectsTrend = document.querySelector('.stat-card:nth-child(3) .trend');
+            
+            if (projectsValue) projectsValue.textContent = stats.projects.total.toLocaleString();
+            if (projectsTrend) {
+                projectsTrend.textContent = `${stats.projects.trendDirection === 'up' ? '↑' : '↓'} ${Math.abs(stats.projects.trend)}% from last month`;
+                projectsTrend.className = `trend ${stats.projects.trendDirection}`;
+            }
+            
+            // Update tasks stat
+            const tasksValue = document.querySelector('.stat-card:nth-child(4) .value');
+            const tasksTrend = document.querySelector('.stat-card:nth-child(4) .trend');
+            
+            if (tasksValue) tasksValue.textContent = stats.tasks.total.toLocaleString();
+            if (tasksTrend) {
+                tasksTrend.textContent = `${stats.tasks.trendDirection === 'up' ? '↑' : '↓'} ${Math.abs(stats.tasks.trend)}% from last month`;
+                tasksTrend.className = `trend ${stats.tasks.trendDirection}`;
+            }
+        }
+        
+        function updateRevenueChart(data) {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            if (window.revenueChartInstance) window.revenueChartInstance.destroy();
+            // Create gradient for revenue
+            const gradient = ctx.createLinearGradient(0, 0, 0, 140);
+            gradient.addColorStop(0, 'rgba(39, 174, 96, 0.3)');
+            gradient.addColorStop(1, 'rgba(39, 174, 96, 0.05)');
+            // Create gradient for expenses
+            const gradient2 = ctx.createLinearGradient(0, 0, 0, 140);
+            gradient2.addColorStop(0, 'rgba(231, 76, 60, 0.3)');
+            gradient2.addColorStop(1, 'rgba(231, 76, 60, 0.05)');
+            // Create gradient for profit
+            const gradient3 = ctx.createLinearGradient(0, 0, 0, 140);
+            gradient3.addColorStop(0, 'rgba(52, 152, 219, 0.3)');
+            gradient3.addColorStop(1, 'rgba(52, 152, 219, 0.05)');
+            window.revenueChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: data.values,
+                            borderColor: '#27ae60',
+                            backgroundColor: gradient,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Expenses',
+                            data: data.expenses,
+                            borderColor: '#e74c3c',
+                            backgroundColor: gradient2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'Profit',
+                            data: data.profit,
+                            borderColor: '#3498db',
+                            backgroundColor: gradient3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: { enabled: true }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Period', color: '#7f8c8d', font: { weight: 'bold' } },
+                            grid: { display: true, color: 'rgba(0,0,0,0.04)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Amount (KES)', color: '#7f8c8d', font: { weight: 'bold' } },
+                            grid: { display: true, color: 'rgba(0,0,0,0.07)' },
+                            beginAtZero: true
+                        }
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        function updateProductivityChart(data) {
+            const ctx = document.getElementById('productivityChart').getContext('2d');
+            if (window.productivityChartInstance) window.productivityChartInstance.destroy();
+            window.productivityChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Operations',
+                            data: data.operations,
+                            backgroundColor: 'rgba(41, 128, 185, 0.8)',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Logistics',
+                            data: data.logistics,
+                            backgroundColor: 'rgba(243, 156, 18, 0.8)',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Support',
+                            data: data.support,
+                            backgroundColor: 'rgba(39, 174, 96, 0.8)',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: { enabled: true }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Month', color: '#7f8c8d', font: { weight: 'bold' } },
+                            grid: { display: true, color: 'rgba(0,0,0,0.04)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Productivity (%)', color: '#7f8c8d', font: { weight: 'bold' } },
+                            grid: { display: true, color: 'rgba(0,0,0,0.07)' },
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        function updateProjectStatusChart(data) {
+            // Chart.js doughnut chart for project status
+            const ctx = document.getElementById('projectStatusChart').getContext('2d');
+            if (window.projectStatusChartInstance) window.projectStatusChartInstance.destroy();
+            window.projectStatusChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.values,
+                        backgroundColor: [
+                            'rgba(39, 174, 96, 0.7)',
+                            'rgba(52, 152, 219, 0.7)',
+                            'rgba(243, 156, 18, 0.7)',
+                            'rgba(231, 76, 60, 0.7)'
+                        ]
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: true, position: 'bottom' } },
+                    cutout: '70%',
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        function updateFleetStatusTable(fleetStatus) {
+            const tbody = document.getElementById('fleet-status-table');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            [
+                { type: 'Ships', key: 'ships' },
+                { type: 'Planes', key: 'planes' },
+                { type: 'Trains', key: 'trains' },
+                { type: 'Trucks', key: 'trucks' }
+            ].forEach(row => {
+                tbody.innerHTML += `<tr>
+                    <td style='padding:6px;'>${row.type}</td>
+                    <td style='padding:6px;'>${fleetStatus[row.key].operating}</td>
+                    <td style='padding:6px;'>${fleetStatus[row.key].grounded}</td>
+                </tr>`;
+            });
+        }
+        
+        function updateCargoTracking(cargoList) {
+            const tbody = document.getElementById('cargo-table-body');
+            if (tbody) {
+                tbody.innerHTML = '';
+                cargoList.forEach(cargo => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${cargo.airwayBill}</td>
+                        <td>${cargo.details}</td>
+                        <td>${cargo.departureDate} ${cargo.departureTime}</td>
+                        <td>${cargo.arrivalDate} ${cargo.arrivalTime}</td>
+                        <td>${cargo.from}</td>
+                        <td>${cargo.to}</td>
+                        <td>${cargo.weight}</td>
+                        <td><span class="status ${cargo.status.toLowerCase().replace(' ', '-')}">${cargo.status}</span></td>
+                        <td>${cargo.client.name}<br><span style='font-size:12px; color:#888;'>${cargo.client.info}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+        
+        // Updated function to populate the notification panel
+        function updateNotificationPanel(notifications) {
+            const notificationPanelList = document.getElementById('notification-panel-list');
+
+            if (notificationPanelList) {
+                notificationPanelList.innerHTML = '';
+
+                notifications.forEach(notification => {
+                    const div = document.createElement('div');
+                    div.className = 'notification-item';
+                    div.style.padding = '12px 0';
+                    div.style.borderBottom = '1px solid var(--table-border-color)';
+
+
+                    let icon = '🔔';
+                    if (notification.type === 'task') icon = '📝';
+                    else if (notification.type === 'comment') icon = '💬';
+                    else if (notification.type === 'reminder') icon = '⏰';
+                    else if (notification.type === 'project') icon = '📁';
+
+                    div.innerHTML = `
+                        <div class="notification-icon" style="width: 30px; height: 30px; font-size: 16px; margin-right: 10px; flex-shrink: 0;">${icon}</div>
+                        <div class="notification-details" style="flex-grow: 1;">
+                            <div class="notification-message" style="font-size: 14px; margin-bottom: 3px;">${notification.message}</div>
+                            <div class="notification-time" style="font-size: 11px; color: #7f8c8d;">${notification.time}</div>
+                        </div>
+                    `;
+
+                    notificationPanelList.appendChild(div);
+                });
+                 // Remove border from last item
+                 if (notificationPanelList.lastElementChild) {
+                    notificationPanelList.lastElementChild.style.borderBottom = 'none';
+                }
+            }
+        }
+
+         // Added function to populate the message panel
+        function updateMessagePanel(messages) {
+            const messagePanelList = document.getElementById('message-panel-list');
+
+            if (messagePanelList) {
+                messagePanelList.innerHTML = '';
+
+                messages.forEach(message => {
+                    const div = document.createElement('div');
+                    div.className = 'message-item';
+                    div.style.padding = '12px 0';
+                    div.style.borderBottom = '1px solid var(--table-border-color)';
+                    div.style.display = 'flex';
+                    div.style.alignItems = 'center';
+
+
+                    // Simple icon for message
+                    const iconDiv = document.createElement('div');
+                    iconDiv.style.width = '30px';
+                    iconDiv.style.height = '30px';
+                    iconDiv.style.fontSize = '16px';
+                    iconDiv.style.marginRight = '10px';
+                    iconDiv.style.flexShrink = '0';
+                    iconDiv.style.display = 'flex';
+                    iconDiv.style.alignItems = 'center';
+                    iconDiv.style.justifyContent = 'center';
+                    iconDiv.style.backgroundColor = 'rgba(243, 156, 18, 0.1)'; // Example background
+                    iconDiv.style.borderRadius = '50%';
+                    iconDiv.style.color = 'var(--accent)';
+                    iconDiv.textContent = '✉️'; // Message icon
+
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.style.flexGrow = '1';
+
+                    const senderTimeDiv = document.createElement('div');
+                    senderTimeDiv.style.fontSize = '11px';
+                    senderTimeDiv.style.color = '#7f8c8d';
+                    senderTimeDiv.textContent = `${message.sender} - ${message.time}`;
+                    senderTimeDiv.style.marginBottom = '3px';
+
+
+                    const messageTextDiv = document.createElement('div');
+                    messageTextDiv.style.fontSize = '14px';
+                    messageTextDiv.textContent = message.message;
+
+                    detailsDiv.appendChild(senderTimeDiv);
+                    detailsDiv.appendChild(messageTextDiv);
+
+                    div.appendChild(iconDiv);
+                    div.appendChild(detailsDiv);
+
+
+                    messagePanelList.appendChild(div);
+                });
+                // Remove border from last item
+                 if (messagePanelList.lastElementChild) {
+                    messagePanelList.lastElementChild.style.borderBottom = 'none';
+                }
+            }
+        }
+        
+        function setupEventListeners() {
+            // Handle chart period change
+            const chartPeriodSelect = document.getElementById('revenue-period-select');
+            if (chartPeriodSelect) {
+                chartPeriodSelect.addEventListener('change', function() {
+                    // For demo, update with mock data
+                    if (this.value === 'Last 7 Days') {
+                        updateRevenueChart({
+                            labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+                            values: [12500, 15000, 10000, 22000, 18000, 8000, 5000]
+                        });
+                        updateProductivityChart({
+                            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                            values: [80, 82, 85, 83, 90, 88, 87]
+                        });
+                    } else if (this.value === 'Last 30 Days') {
+                        updateRevenueChart(mockData.revenueData);
+                        updateProductivityChart(mockData.productivityData);
+                    } else if (this.value === 'Last 90 Days') {
+                        updateRevenueChart({
+                            labels: ['January', 'February', 'March'],
+                            values: [320000, 348250, 380000]
+                        });
+                        updateProductivityChart({
+                            labels: ['Jan', 'Feb', 'Mar'],
+                            values: [80, 85, 90]
+                        });
+                    } else {
+                        updateRevenueChart({
+                            labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                            values: [1048250, 1125000, 980000, 1200000]
+                        });
+                        updateProductivityChart({
+                            labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                            values: [80, 85, 90, 95]
+                        });
+                    }
+                });
+            }
+            
+            // Handle quick action buttons
+            const actionButtons = document.querySelectorAll('.action-btn');
+            actionButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const actionLabel = this.querySelector('.action-label')?.textContent;
+                    
+                    if (actionLabel === 'New Project') {
+                        alert('Create New Project functionality would open a form here');
+                    } else if (actionLabel === 'Add User') {
+                        alert('Add User functionality would open a form here');
+                    } else if (actionLabel === 'Create Task') {
+                        alert('Create Task functionality would open a form here');
+                    } else if (actionLabel === 'Generate Report') {
+                        alert('Report generated successfully: Performance Report - Monthly\nDownload URL: /reports/performance-report-123456789.pdf');
+                    }
+                });
+            });
+            
+            // Handle "See All" links
+            const seeAllLinks = document.querySelectorAll('.see-all');
+            seeAllLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const parent = this.closest('.card') || this.closest('[id$="-panel"]'); // Check parent card or panel
+                    const title = parent.querySelector('.chart-title')?.textContent || parent.querySelector('h4')?.textContent || 'Items'; // Get title from chart-title or h4
+                    alert(`This would navigate to a page showing all ${title}`);
+                });
+            });
+            
+            // Handle search
+            const searchInput = document.querySelector('.search-bar input');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        alert(`This would search for: ${this.value}`);
+                        this.value = '';
+                    }
+                });
+            }
+            
+            // Handle notification and message icons
+            const notificationIcon = document.getElementById('notification-icon');
+            const messageIcon = document.getElementById('message-icon');
+            const notificationPanel = document.getElementById('notification-panel');
+            const messagePanel = document.getElementById('message-panel');
+
+            if (notificationIcon && notificationPanel) {
+                notificationIcon.addEventListener('click', function(event) {
+                    event.stopPropagation(); // Prevent click from closing the panel immediately
+                    notificationPanel.style.display = notificationPanel.style.display === 'none' ? 'block' : 'none';
+                    messagePanel.style.display = 'none'; // Hide message panel if open
+                });
+            }
+
+            if (messageIcon && messagePanel) {
+                messageIcon.addEventListener('click', function(event) {
+                    event.stopPropagation(); // Prevent click from closing the panel immediately
+                    messagePanel.style.display = messagePanel.style.display === 'none' ? 'block' : 'none';
+                    notificationPanel.style.display = 'none'; // Hide notification panel if open
+                });
+            }
+
+            // Close panels when clicking outside
+            document.addEventListener('click', function(event) {
+                if (notificationPanel && !notificationPanel.contains(event.target) && !notificationIcon.contains(event.target)) {
+                    notificationPanel.style.display = 'none';
+                }
+                if (messagePanel && !messagePanel.contains(event.target) && !messageIcon.contains(event.target)) {
+                    messagePanel.style.display = 'none';
+                }
+            });
+        }
+        
+        // PROJECTS SECTION RENDERING
+        function showProjectsSection() {
+            document.getElementById('dashboard-section').style.display = 'none';
+            document.getElementById('projects-section').style.display = 'block';
+            // Render graphs
+            renderProjectsProfitLossGraph();
+            renderProjectsProductivityGraph();
+            // Populate summary cards
+            let totalTrips = mockData.projects.length;
+            let totalFuel = mockData.projects.reduce((sum, v) => sum + v.fuel, 0);
+            let totalDistance = mockData.projects.reduce((sum, v) => sum + v.distance, 0);
+            document.getElementById('total-trips').textContent = totalTrips;
+            document.getElementById('total-fuel').textContent = totalFuel.toLocaleString();
+            document.getElementById('total-distance').textContent = totalDistance.toLocaleString();
+            // Populate flight table
+            const tbody = document.getElementById('projects-vehicle-table');
+            tbody.innerHTML = '';
+            mockData.projects.forEach(v => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${v.id}</td>
+                    <td>${v.destination}</td>
+                    <td>${v.departure}</td>
+                    <td>${v.arrival}</td>
+                    <td>${v.fuel}</td>
+                    <td>${v.distance}</td>
+                    <td>${v.driver}</td>
+                    <td>${v.codriver}</td>
+                    <td>${v.borderPermit}</td>
+                    <td>${v.taxValuation}</td>
+                    <td>${v.deliveryReceipt}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Render Profit/Loss Graph
+        function renderProjectsProfitLossGraph() {
+            const ctx = document.getElementById('projects-profitloss-graph').getContext('2d');
+            if (window.projectsProfitLossChart) window.projectsProfitLossChart.destroy();
+            // Gradients
+            const gradRev = ctx.createLinearGradient(0, 0, 0, 260);
+            gradRev.addColorStop(0, 'rgba(39, 174, 96, 0.7)');
+            gradRev.addColorStop(1, 'rgba(39, 174, 96, 0.1)');
+            const gradExp = ctx.createLinearGradient(0, 0, 0, 260);
+            gradExp.addColorStop(0, 'rgba(231, 76, 60, 0.7)');
+            gradExp.addColorStop(1, 'rgba(231, 76, 60, 0.1)');
+            const gradProf = ctx.createLinearGradient(0, 0, 0, 260);
+            gradProf.addColorStop(0, 'rgba(52, 152, 219, 0.7)');
+            gradProf.addColorStop(1, 'rgba(52, 152, 219, 0.1)');
+            window.projectsProfitLossChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: mockData.projectsGraphs.profitLoss.labels,
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: mockData.projectsGraphs.profitLoss.revenue,
+                            borderColor: '#27ae60',
+                            backgroundColor: gradRev,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
+                            borderWidth: 3
+                        },
+                        {
+                            label: 'Expenses',
+                            data: mockData.projectsGraphs.profitLoss.expenses,
+                            borderColor: '#e74c3c',
+                            backgroundColor: gradExp,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
+                            borderWidth: 3
+                        },
+                        {
+                            label: 'Profit',
+                            data: mockData.projectsGraphs.profitLoss.profit,
+                            borderColor: '#3498db',
+                            backgroundColor: gradProf,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointHoverRadius: 8,
+                            borderWidth: 3
+                        }
+                    ]
+                },
+                options: {
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: { enabled: true, mode: 'index', intersect: false },
+                        title: { display: false }
+                    },
+                    interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Month', color: '#7f8c8d', font: { weight: 'bold' } },
+                            grid: { display: true, color: 'rgba(0,0,0,0.04)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'KES', color: '#7f8c8d', font: { weight: 'bold' } },
+                            grid: { display: true, color: 'rgba(0,0,0,0.07)' },
+                            beginAtZero: true
+                        }
+                    },
+                    responsive: true,
+                    maintainAspectRatio: true
+                 }
+             });
+         }
+
+         // Render Productivity Graph
+         function renderProjectsProductivityGraph() {
+             const ctx = document.getElementById('projects-productivity-graph').getContext('2d');
+             if (window.projectsProductivityChart) window.projectsProductivityChart.destroy();
+             // Gradients
+             const gradTrips = ctx.createLinearGradient(0, 0, 0, 260);
+             gradTrips.addColorStop(0, 'rgba(243, 156, 18, 0.8)');
+             gradTrips.addColorStop(1, 'rgba(243, 156, 18, 0.1)');
+             const gradDist = ctx.createLinearGradient(0, 0, 0, 260);
+             gradDist.addColorStop(0, 'rgba(52, 152, 219, 0.8)');
+             gradDist.addColorStop(1, 'rgba(52, 152, 219, 0.1)');
+             const gradUtil = ctx.createLinearGradient(0, 0, 0, 260);
+             gradUtil.addColorStop(0, 'rgba(39, 174, 96, 0.8)');
+             gradUtil.addColorStop(1, 'rgba(39, 174, 96, 0.1)');
+             window.projectsProductivityChart = new Chart(ctx, {
+                 type: 'bar',
+                 data: {
+                     labels: mockData.projectsGraphs.productivity.labels,
+                     datasets: [
+                         {
+                             label: 'Trips Completed',
+                             data: mockData.projectsGraphs.productivity.tripsCompleted,
+                             backgroundColor: gradTrips,
+                             borderColor: '#f39c12',
+                             borderWidth: 2,
+                             borderRadius: 7,
+                             order: 1
+                         },
+                         {
+                             label: 'Avg Distance (km)',
+                             data: mockData.projectsGraphs.productivity.avgDistance,
+                             type: 'line',
+                             borderColor: '#3498db',
+                             backgroundColor: gradDist,
+                             fill: false,
+                             tension: 0.4,
+                             pointRadius: 6,
+                             pointHoverRadius: 9,
+                             borderWidth: 3,
+                             yAxisID: 'y1',
+                             order: 2
+                         },
+                         {
+                             label: 'Utilization (%)',
+                             data: mockData.projectsGraphs.productivity.utilization,
+                             type: 'line',
+                             borderColor: '#27ae60',
+                             backgroundColor: gradUtil,
+                             fill: false,
+                             tension: 0.4,
+                             pointRadius: 6,
+                             pointHoverRadius: 9,
+                             borderWidth: 3,
+                             yAxisID: 'y2',
+                             order: 3
+                         }
+                     ]
+                 },
+                 options: {
+                     plugins: {
+                         legend: { display: true, position: 'top' },
+                         tooltip: { enabled: true, mode: 'index', intersect: false },
+                         title: { display: false }
+                     },
+                     interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                     scales: {
+                         x: {
+                             title: { display: true, text: 'Month', color: '#7f8c8d', font: { weight: 'bold' } },
+                             grid: { display: true, color: 'rgba(0,0,0,0.04)' }
+                         },
+                         y: {
+                             title: { display: true, text: 'Trips', color: '#7f8c8d', font: { weight: 'bold' } },
+                             grid: { display: true, color: 'rgba(0,0,0,0.07)' },
+                             beginAtZero: true,
+                             position: 'left'
+                         },
+                         y1: {
+                             title: { display: true, text: 'Avg Distance (km)', color: '#3498db', font: { weight: 'bold' } },
+                             grid: { display: false },
+                             beginAtZero: true,
+                             position: 'right'
+                         },
+                         y2: {
+                             title: { display: true, text: 'Utilization (%)', color: '#27ae60', font: { weight: 'bold' } },
+                             grid: { display: false },
+                             beginAtZero: true,
+                             min: 0,
+                             max: 100,
+                             position: 'right',
+                             offset: true
+                         }
+                     },
+                     responsive: true,
+                     maintainAspectRatio: true
+                 }
+             });
+         }
+        
+        // TASKS SECTION RENDERING
+        function showTasksSection() {
+            document.getElementById('dashboard-section').style.display = 'none';
+            document.getElementById('projects-section').style.display = 'none';
+            document.getElementById('tasks-section').style.display = 'block';
+            // Populate Completed
+            const completedList = document.getElementById('tasks-completed-list');
+            completedList.innerHTML = '';
+            mockData.tasks.completed.forEach(task => {
+                const li = document.createElement('li');
+                li.style.marginBottom = '18px';
+                li.innerHTML = `<b>${task.title}</b><br><span style='color:#2980b9;'>Assigned to:</span> ${task.assignedTo}<br><span style='color:#7f8c8d;'>Due:</span> ${task.due}<br><span class='status completed'>${task.status}</span>`;
+                completedList.appendChild(li);
+            });
+            // Populate Ongoing
+            const ongoingList = document.getElementById('tasks-ongoing-list');
+            ongoingList.innerHTML = '';
+            mockData.tasks.ongoing.forEach(task => {
+                const li = document.createElement('li');
+                li.style.marginBottom = '18px';
+                li.innerHTML = `<b>${task.title}</b><br><span style='color:#2980b9;'>Assigned to:</span> ${task.assignedTo}<br><span style='color:#7f8c8d;'>Due:</span> ${task.due}<br><span class='status in-progress'>${task.status}</span>`;
+                ongoingList.appendChild(li);
+            });
+            // Populate Pending
+            const pendingList = document.getElementById('tasks-pending-list');
+            pendingList.innerHTML = '';
+            mockData.tasks.pending.forEach(task => {
+                const li = document.createElement('li');
+                li.style.marginBottom = '18px';
+                li.innerHTML = `<b>${task.title}</b><br><span style='color:#2980b9;'>Assigned to:</span> ${task.assignedTo}<br><span style='color:#7f8c8d;'>Due:</span> ${task.due}<br><span class='status pending'>${task.status}</span>`;
+                pendingList.appendChild(li);
+            });
+        }
+        
+        // REPORTS SECTION RENDERING
+        function showReportsSection() {
+            document.getElementById('dashboard-section').style.display = 'none';
+            document.getElementById('projects-section').style.display = 'none';
+            document.getElementById('tasks-section').style.display = 'none';
+            document.getElementById('reports-section').style.display = 'block';
+            document.getElementById('team-section').style.display = 'none';
+            document.getElementById('clients-section').style.display = 'none';
+            document.getElementById('calendar-section').style.display = 'none';
+            document.getElementById('profile-section').style.display = 'none';
+            // Populate Profit Summary
+            document.getElementById('profit-revenue').textContent = 'KES348,250';
+            document.getElementById('profit-expenses').textContent = 'KES265,000';
+            document.getElementById('profit-profit').textContent = 'KES83,250';
+            document.getElementById('profit-margin').textContent = '23.9%';
+            // Populate Boss Chat
+            const bossChat = document.getElementById('chat-boss');
+            bossChat.innerHTML = '';
+            mockData.reports.boss.forEach(msg => {
+                const div = document.createElement('div');
+                div.style.marginBottom = '14px';
+                div.style.textAlign = msg.sender === 'Admin' ? 'right' : 'left';
+                div.innerHTML = `<span style='font-weight:bold;color:${msg.sender==='Admin'?'#1a5276':'#f39c12'};'>${msg.sender}</span> <span style='font-size:12px;color:#888;'>${msg.time}</span><br><span style='background:${msg.sender==='Admin'?'#eaf6fb':'#fdf6e3'};padding:7px 13px;border-radius:12px;display:inline-block;margin-top:2px;'>${msg.message}</span>`;
+                bossChat.appendChild(div);
+            });
+            // Populate Clients Chat
+            const clientsChat = document.getElementById('chat-clients');
+            clientsChat.innerHTML = '';
+            mockData.reports.clients.forEach(msg => {
+                const div = document.createElement('div');
+                div.style.marginBottom = '14px';
+                div.style.textAlign = msg.sender === 'Admin' ? 'right' : 'left';
+                div.innerHTML = `<span style='font-weight:bold;color:${msg.sender==='Admin'?'#1a5276':'#e67e22'};'>${msg.sender}</span> <span style='font-size:12px;color:#888;'>${msg.time}</span><br><span style='background:${msg.sender==='Admin'?'#eaf6fb':'#fdf6e3'};padding:7px 13px;border-radius:12px;display:inline-block;margin-top:2px;'>${msg.message}</span>`;
+                clientsChat.appendChild(div);
+            });
+        }
+        
+        // Initialize dashboard on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for saved theme preference
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('dark-mode-toggle').checked = true;
+            }
+            updateDashboard(); // Show default dashboard on load
+
+            // Dark mode toggle event listener
+            document.getElementById('dark-mode-toggle').addEventListener('change', function(event) {
+                if (event.target.checked) {
+                    document.body.classList.add('dark-mode');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        });
+
+        // Leaflet.js map with truck and flight markers
+        document.addEventListener('DOMContentLoaded', function() {
+            var map = L.map('leaflet-map').setView([-1.286389, 36.817223], 13); // Changed to Nairobi coordinates and increased zoom level
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            // Custom icons
+            var truckIcon = L.divIcon({
+                html: '<span style="font-size:22px;color:#1a5276;">🚚</span>',
+                iconSize: [30, 30],
+                className: ''
+            });
+            var trainIcon = L.divIcon({
+                html: '<span style="font-size:22px;color:#8e44ad;">🚆</span>',
+                iconSize: [30, 30],
+                className: ''
+            });
+            var flightIcon = L.divIcon({
+                html: '<span style="font-size:22px;color:#e67e22;">✈️</span>',
+                iconSize: [30, 30],
+                className: ''
+            });
+            // Mock truck and flight locations
+            var trucks = [
+                { lat: 34.0522, lng: -118.2437, label: 'Truck 1', info: 'Los Angeles, CA' },
+                { lat: 41.8781, lng: -87.6298, label: 'Truck 2', info: 'Chicago, IL' },
+                { lat: 29.7604, lng: -95.3698, label: 'Truck 3', info: 'Houston, TX' },
+                { lat: 39.7392, lng: -104.9903, label: 'Truck 4', info: 'Denver, CO' },
+                { lat: 32.7767, lng: -96.7870, label: 'Truck 5', info: 'Dallas, TX' },
+                { lat: 36.1627, lng: -86.7816, label: 'Truck 6', info: 'Nashville, TN' },
+                { lat: 33.4484, lng: -112.0740, label: 'Truck 7', info: 'Phoenix, AZ' },
+                { lat: 47.6062, lng: -122.3321, label: 'Truck 8', info: 'Seattle, WA' },
+                { lat: 42.3601, lng: -71.0589, label: 'Truck 9', info: 'Boston, MA' },
+                { lat: 38.9072, lng: -77.0369, label: 'Truck 10', info: 'Washington, DC' },
+                { lat: 37.7749, lng: -122.4194, label: 'Truck 11', info: 'San Francisco, CA' },
+                { lat: 45.5051, lng: -122.6750, label: 'Truck 12', info: 'Portland, OR' }
+            ];
+            var trains = [
+                { lat: 41.2565, lng: -95.9345, label: 'Train 1', info: 'Omaha, NE' },
+                { lat: 39.1031, lng: -84.5120, label: 'Train 2', info: 'Cincinnati, OH' },
+                { lat: 44.9778, lng: -93.2650, label: 'Train 3', info: 'Minneapolis, MN' }
+            ];
+            var flights = [
+                { lat: 40.6413, lng: -73.7781, label: 'Flight 1', info: 'JFK, NY' },
+                { lat: 33.6407, lng: -84.4277, label: 'Flight 2', info: 'Atlanta, GA' },
+                { lat: 25.7959, lng: -80.2870, label: 'Flight 3', info: 'Miami, FL' },
+                { lat: 32.7338, lng: -117.1933, label: 'Flight 4', info: 'San Diego, CA' },
+                { lat: 39.8617, lng: -104.6731, label: 'Flight 5', info: 'Denver, CO' },
+                { lat: 41.9742, lng: -87.9073, label: 'Flight 6', info: 'O\'Hare, Chicago, IL' },
+                { lat: 29.9902, lng: -90.2590, label: 'Flight 7', info: 'New Orleans, LA' },
+                { lat: 36.0801, lng: -115.1522, label: 'Flight 8', info: 'Las Vegas, NV' },
+                { lat: 33.9416, lng: -118.4085, label: 'Flight 9', info: 'LAX, Los Angeles, CA' }
+            ];
+            trucks.forEach(function(truck) {
+                L.marker([truck.lat, truck.lng], { icon: truckIcon })
+                    .addTo(map)
+                    .bindPopup('<b>' + truck.label + '</b><br>' + truck.info);
+            });
+            trains.forEach(function(train) {
+                L.marker([train.lat, train.lng], { icon: trainIcon })
+                    .addTo(map)
+                    .bindPopup('<b>' + train.label + '</b><br>' + train.info);
+            });
+            flights.forEach(function(flight) {
+                L.marker([flight.lat, flight.lng], { icon: flightIcon })
+                    .addTo(map)
+                    .bindPopup('<b>' + flight.label + '</b><br>' + flight.info);
+            });
+        });
+
+        // Add placeholder functions for new sections
+        function showTeamSection() {
+            // Hide other sections
+            document.getElementById('dashboard-section').style.display = 'none';
+            document.getElementById('projects-section').style.display = 'none';
+            document.getElementById('tasks-section').style.display = 'none';
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('clients-section').style.display = 'none';
+            document.getElementById('calendar-section').style.display = 'none';
+            document.getElementById('profile-section').style.display = 'none';
+            // Show Team section
+            document.getElementById('team-section').style.display = 'block';
+
+            // Populate team list
+            const teamListContainer = document.getElementById('team-list');
+            if (teamListContainer) {
+                teamListContainer.innerHTML = '';
+                mockData.teamMembers.forEach(member => {
+                    const memberCard = document.createElement('div');
+                    memberCard.className = 'card';
+                    memberCard.style.marginBottom = '20px';
+                    memberCard.innerHTML = `
+                        <div style="display:flex;align-items:center;margin-bottom:15px;">
+                           <img src="${member.photoUrl}" alt="${member.name}" style="width:50px;height:50px;border-radius:50%;margin-right:15px;object-fit:cover;">
+                           <div>
+                               <div class="chart-title" style="margin-bottom: 5px;">${member.name}</div>
+                               <div style="font-size:14px;color:#7f8c8d;">${member.role}</div>
+                           </div>
+                        </div>
+                        <div class="profile-detail-row">
+                            <div class="profile-detail-label">Role:</div>
+                            <div class="profile-detail-value">${member.role}</div>
+                        </div>
+                        <div class="profile-detail-row">
+                            <div class="profile-detail-label">Email:</div>
+                            <div class="profile-detail-value">${member.email}</div>
+                        </div>
+                    `;
+                    teamListContainer.appendChild(memberCard);
+                });
+            }
+        }
+        // CLIENTS SECTION RENDERING
+        function showClientsSection() {
+            // Hide other sections
+            document.getElementById('dashboard-section').style.display = 'none';
+            document.getElementById('projects-section').style.display = 'none';
+            document.getElementById('tasks-section').style.display = 'none';
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('team-section').style.display = 'none';
+            document.getElementById('calendar-section').style.display = 'none';
+            document.getElementById('profile-section').style.display = 'none';
+            // Show Clients section
+            document.getElementById('clients-section').style.display = 'block';
+
+            // Populate clients list
+            const clientsListContainer = document.getElementById('clients-list');
+            if (clientsListContainer) {
+                clientsListContainer.innerHTML = '';
+                mockData.clients.forEach(client => {
+                    const clientCard = document.createElement('div');
+                    clientCard.className = 'card';
+                    clientCard.style.marginBottom = '20px';
+                    clientCard.innerHTML = `
+                        <div class="chart-header"><div class="chart-title">${client.name}</div></div>
+                        <div class="profile-detail-row">
+                            <div class="profile-detail-label">Cargo Plane:</div>
+                            <div class="profile-detail-value">${client.planeType}</div>
+                        </div>
+                        <div class="profile-detail-row">
+                            <div class="profile-detail-label">Contact:</div>
+                            <div class="profile-detail-value">${client.contactPerson}</div>
+                        </div>
+                        <div class="profile-detail-row">
+                            <div class="profile-detail-label">Email:</div>
+                            <div class="profile-detail-value">${client.email}</div>
+                        </div>
+                        <div class="profile-detail-row">
+                            <div class="profile-detail-label">Phone:</div>
+                            <div class="profile-detail-value">${client.phone}</div>
+                        </div>
+                        <div class="profile-detail-row">
+                            <div class="profile-detail-label">Contract Value:</div>
+                            <div class="profile-detail-value">KES${client.contractValue}</div>
+                        </div>
+                        <div class="profile-detail-row">
+                            <div class="profile-detail-label">Status:</div>
+                            <div class="profile-detail-value"><span class="status completed">${client.status}</span></div>
+                        </div>
+                    `;
+                    clientsListContainer.appendChild(clientCard);
+                });
+            }
+        }
+        function showCalendarSection() {
+            // Hide other sections
+            document.getElementById('dashboard-section').style.display = 'none';
+            document.getElementById('projects-section').style.display = 'none';
+            document.getElementById('tasks-section').style.display = 'none';
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('team-section').style.display = 'none';
+            document.getElementById('clients-section').style.display = 'none';
+            document.getElementById('profile-section').style.display = 'none';
+            // Show Calendar section
+            document.getElementById('calendar-section').style.display = 'block';
+
+            // Populate calendar events
+            const calendarList = document.getElementById('calendar-events-list');
+            if (calendarList) {
+                calendarList.innerHTML = '';
+                mockData.calendarEvents.forEach(event => {
+                    const li = document.createElement('li');
+                    li.style.marginBottom = '15px';
+                    li.innerHTML = `
+                        <b>${event.title}</b><br>
+                        <span style='color:#2980b9;'>Date:</span> ${event.date}<br>
+                        <span style='color:#7f8c8d;'>Time:</span> ${event.time}<br>
+                        <span style='color:#e67e22;'>Location:</span> ${event.location}
+                    `;
+                    calendarList.appendChild(li);
+                });
+            }
+        }
+        
+        // PROFILE SECTION RENDERING
+        function showProfileSection() {
+            // Hide other sections
+            document.getElementById('dashboard-section').style.display = 'none';
+            document.getElementById('projects-section').style.display = 'none';
+            document.getElementById('tasks-section').style.display = 'none';
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('team-section').style.display = 'none';
+            document.getElementById('clients-section').style.display = 'none';
+            document.getElementById('calendar-section').style.display = 'none';
+            // Show Profile section
+            document.getElementById('profile-section').style.display = 'block';
+
+            // Populate profile details
+            document.getElementById('profile-name').textContent = mockData.user.name;
+            document.getElementById('profile-role').textContent = mockData.user.role;
+            document.getElementById('profile-email').textContent = mockData.user.email;
+            document.getElementById('profile-photo').src = mockData.user.photoUrl; // Set photo source
+            document.getElementById('profile-skills').textContent = mockData.user.skills; // Populate skills
+            document.getElementById('profile-vision').textContent = mockData.user.vision; // Populate vision
+        }
+
+        // Initialize dashboard on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for saved theme preference
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('dark-mode-toggle').checked = true;
+            }
+            updateDashboard(); // Show default dashboard on load
+
+            // Dark mode toggle event listener
+            document.getElementById('dark-mode-toggle').addEventListener('change', function(event) {
+                if (event.target.checked) {
+                    document.body.classList.add('dark-mode');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        });
+
+        // Password strength meter logic
+        const passwordInput = document.getElementById('new-password');
+        const strengthBar = document.getElementById('password-strength-bar');
+
+        if (passwordInput && strengthBar) {
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                let strength = 0;
+
+                if (password.length > 5) strength++;
+                if (password.length > 10) strength++;
+                if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+                if (/[0-9]/.test(password)) strength++;
+                if (/[^A-Za-z0-9]/.test(password)) strength++;
+
+                let barWidth = (strength / 5) * 100; // Max strength 5
+                let barColor = 'red';
+
+                if (strength > 2) barColor = 'orange';
+                if (strength > 4) barColor = 'green';
+
+                strengthBar.style.width = barWidth + '%';
+                strengthBar.style.backgroundColor = barColor;
+            });
+        }
+
+    </script>
+    <script>
+        // SETTINGS SECTION RENDERING
+        function showSettingsSection() {
+            // Hide other sections
+            document.getElementById('dashboard-section').style.display = 'none';
+            document.getElementById('projects-section').style.display = 'none';
+            document.getElementById('tasks-section').style.display = 'none';
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('team-section').style.display = 'none';
+            document.getElementById('clients-section').style.display = 'none';
+            document.getElementById('calendar-section').style.display = 'none';
+            document.getElementById('profile-section').style.display = 'none';
+            // Show Settings section
+            document.getElementById('settings-section').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
