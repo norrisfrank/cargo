@@ -740,6 +740,11 @@
                 <input type="text" placeholder="Search...">
             </div>
             <div class="header-actions">
+                <!-- Backend Status Indicator -->
+                <div id="backend-status" style="margin-right: 15px; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                    <span id="status-indicator">●</span>
+                    <span id="status-text">Checking...</span>
+                </div>
                 <div class="notification-icon" id="notification-icon">
                     🔔
                     <span class="badge">3</span>
@@ -1283,17 +1288,79 @@
     </div>
 
     <script>
-        // Mock data for dashboard
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:3000/api';
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = JSON.parse(localStorage.getItem('currentUser')) || {
+            id: 1,
+            name: 'Norris Frank',
+            email: 'norrisfrankmeyo@gmail.com',
+            role: 'Administrator',
+            photoUrl: 'https://randomuser.me/api/portraits/men/44.jpg',
+            skills: 'Logistics Management, Supply Chain Optimization, Secure Transport, Team Leadership, Data Analytics, Client Relations',
+            vision: 'To transform Titan Cargo into the most trusted, innovative, and secure logistics partner in the world, delivering excellence for every client and every shipment.'
+        };
+
+        // API Helper Functions
+        const apiCall = async (endpoint, options = {}) => {
+            const url = `${API_BASE_URL}${endpoint}`;
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+                    ...options.headers
+                },
+                ...options
+            };
+
+            try {
+                const response = await fetch(url, config);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('API call failed:', error);
+                return null;
+            }
+        };
+
+        // Authentication Functions
+        const login = async (email, password) => {
+            const response = await apiCall('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ email, password })
+            });
+            
+            if (response && response.token) {
+                authToken = response.token;
+                currentUser = response.user;
+                localStorage.setItem('authToken', authToken);
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                return true;
+            }
+            return false;
+        };
+
+        const register = async (userData) => {
+            const response = await apiCall('/auth/register', {
+                method: 'POST',
+                body: JSON.stringify(userData)
+            });
+            
+            if (response && response.token) {
+                authToken = response.token;
+                currentUser = response.user;
+                localStorage.setItem('authToken', authToken);
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                return true;
+            }
+            return false;
+        };
+
+        // Mock data for dashboard (fallback)
         const mockData = {
-            user: {
-                id: 1,
-                name: 'Norris Frank', // Changed name from 'Titan Cargo Admin'
-                email: 'norrisfrankmeyo@gmail.com', // Added email
-                role: 'Administrator',
-                photoUrl: 'https://randomuser.me/api/portraits/men/44.jpg', // Added photo URL
-                skills: 'Logistics Management, Supply Chain Optimization, Secure Transport, Team Leadership, Data Analytics, Client Relations', // Added skills
-                vision: 'To transform Titan Cargo into the most trusted, innovative, and secure logistics partner in the world, delivering excellence for every client and every shipment.' // Added vision
-            },
+            user: currentUser,
             stats: {
                 revenue: {
                     total: 348250,
@@ -1588,30 +1655,53 @@
             });
         });
         
-        // Update UI with mock data
-        function updateDashboard() {
+        // API Data Fetching Functions
+        const fetchDashboardData = async () => {
+            try {
+                const stats = await apiCall('/dashboard/stats');
+                const bookings = await apiCall('/bookings');
+                const trips = await apiCall('/trips');
+                const vehicles = await apiCall('/vehicles');
+                
+                return {
+                    stats: stats || mockData.stats,
+                    bookings: bookings || mockData.cargo,
+                    trips: trips || mockData.projects,
+                    vehicles: vehicles || mockData.fleetStatus
+                };
+            } catch (error) {
+                console.error('Failed to fetch dashboard data:', error);
+                return mockData;
+            }
+        };
+
+        // Update UI with real data from API
+        const updateDashboard = async () => {
             // Update user info
-            updateUserInfo(mockData.user);
+            updateUserInfo(currentUser);
+            
+            // Fetch and update dashboard data
+            const data = await fetchDashboardData();
             
             // Update dashboard stats
-            updateDashboardStats(mockData.stats);
+            updateDashboardStats(data.stats);
             
             // Update charts
-            updateRevenueChart(mockData.revenueData);
+            updateRevenueChart(mockData.revenueData); // Keep mock charts for now
             updateProductivityChart(mockData.productivityData);
             updateProjectStatusChart(mockData.projectStatus);
-            updateFleetStatusTable(mockData.fleetStatus);
+            updateFleetStatusTable(data.vehicles);
             
-            // Update cargo tracking table
-            updateCargoTracking(mockData.cargo);
+            // Update cargo tracking table with real bookings
+            updateCargoTracking(data.bookings);
             
-            // Update notifications and messages panels (initial load)
+            // Update notifications and messages panels
             updateNotificationPanel(mockData.notifications);
             updateMessagePanel(mockData.messages);
             
             // Set up event listeners for interactive elements
             setupEventListeners();
-        }
+        };
         
         function updateUserInfo(user) {
             // Update user avatar and name
@@ -2657,6 +2747,45 @@
             // Show Settings section
             document.getElementById('settings-section').style.display = 'block';
         }
+
+        // Backend Status Check
+        const checkBackendStatus = async () => {
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const statusDiv = document.getElementById('backend-status');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/dashboard/stats`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(authToken && { 'Authorization': `Bearer ${authToken}` })
+                    }
+                });
+                
+                if (response.ok) {
+                    statusIndicator.style.color = '#27ae60';
+                    statusText.textContent = 'Backend Connected';
+                    statusDiv.style.backgroundColor = 'rgba(39, 174, 96, 0.1)';
+                    statusDiv.style.color = '#27ae60';
+                } else {
+                    throw new Error('Backend not responding');
+                }
+            } catch (error) {
+                statusIndicator.style.color = '#e74c3c';
+                statusText.textContent = 'Backend Offline';
+                statusDiv.style.backgroundColor = 'rgba(231, 76, 60, 0.1)';
+                statusDiv.style.color = '#e74c3c';
+                console.warn('Backend connection failed:', error);
+            }
+        };
+
+        // Initialize backend status check
+        document.addEventListener('DOMContentLoaded', async function() {
+            await checkBackendStatus();
+            // Check backend status every 30 seconds
+            setInterval(checkBackendStatus, 30000);
+        });
     </script>
 </body>
 </html>
